@@ -576,6 +576,12 @@ namespace DevLocker.VersionControl.WiseGit
 			if (error.Contains("fatal: not a git repository"))
 				return StatusOperationResult.NotWorkingCopy;
 
+			// warning: could not open directory '...': No such file or directory
+			// Folder for target file was not found.
+			// Happens when duplicating unversioned folder with unversioned files inside - requests for status by OnWillCreateAsset(), but files are not actually created yet.
+			if (error.Contains("No such file or directory"))
+				return StatusOperationResult.TargetPathNotFound;
+
 			// System.ComponentModel.Win32Exception (0x80004005): ApplicationName='...', CommandLine='...', Native error= The system cannot find the file specified.
 			// Could not find the command executable. The user hasn't installed their CLI (Command Line Interface) so we're missing an "git.exe" in the PATH environment.
 			if (error.Contains("0x80004005"))
