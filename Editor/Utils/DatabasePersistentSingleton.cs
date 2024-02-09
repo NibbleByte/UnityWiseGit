@@ -146,6 +146,7 @@ namespace DevLocker.VersionControl.WiseGit.Utils
 
 			try {
 				m_WorkerThread = new System.Threading.Thread(GatherData);
+				m_WorkerThread.Name = GetType().Name + " Worker";
 				m_WorkerThread.Start();
 
 			} catch (Exception ex) {
