@@ -43,6 +43,8 @@ Simple but powerful git integration for Unity 3D utilizing [TortoiseGit](https:/
 
 *Check the screenshots below*
 
+NOTE: This was started as a quick fork of [WiseSVN](https://github.com/NibbleByte/UnityWiseSVN).
+
 ## Usage
 Do your file operations in Unity and the plugin will handle the rest.
 

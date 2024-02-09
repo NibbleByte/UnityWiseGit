@@ -384,6 +384,27 @@ namespace DevLocker.VersionControl.WiseGit
 					return ParseCommonStatusError(result.Error);
 				}
 
+				// TODO: This crashesh the editor on exit when called form a background thread. Callstack:
+				// TcpMessagingSession - receive error: operation aborted. errorcode: 995, details: The I/ O operation has been aborted because of either a thread exit or an application request.
+				// TcpMessagingSession - receive error: operation aborted. errorcode: 995, details: The I/ O operation has been aborted because of either a thread exit or an application request.
+				// Cleanup mono
+				// (Unity) LaunchBugReporter
+				// (Unity) EditorMonoConsole::LogToConsoleImplementation
+				// (Unity) EditorMonoConsole::LogToConsoleImplementation
+				// (Unity) DebugStringToFilePostprocessedStacktrace
+				// (Unity) DebugStringToFile
+				// (Unity) GetManagerFromContext
+				// (Unity) scripting_class_from_fullname
+				// (Unity) OptionalType
+				// (Unity) InitializeCoreScriptingClasses
+				// (Unity) GetCoreScriptingClasses
+				// (Unity) JSONUtility::DeserializeObject
+				// (Unity) FromJsonInternal
+				// (Unity) JsonUtility_CUSTOM_FromJsonInternal
+				// (Mono JIT Code)(wrapper managed - to - native) UnityEngine.JsonUtility:FromJsonInternal(string, object, System.Type)
+				// (Mono JIT Code) UnityEngine.JsonUtility:FromJson(string, System.Type)
+				// (Mono JIT Code) UnityEngine.JsonUtility:FromJson < DevLocker.VersionControl.WiseGit.WiseGitIntegration / LocksJSONEntry > (string)
+				// (Mono JIT Code)[...\Editor\WiseGitIntegration.cs:387] DevLocker.VersionControl.WiseGit.WiseGitIntegration:GetStatuses(...)
 				locksJSONEntry = JsonUtility.FromJson<LocksJSONEntry>(result.Output);
 				locksJSONEntry.ExcludeOutsidePaths(path);
 			}
