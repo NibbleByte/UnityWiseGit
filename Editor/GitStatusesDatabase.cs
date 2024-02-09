@@ -307,7 +307,7 @@ namespace DevLocker.VersionControl.WiseGit
 					}
 				}
 
-				if (ShellUtils.IsProcessAlive(result.ProcessId)) {
+				if (result.Error.Contains(ShellUtils.TIME_OUT_ERROR_TOKEN) && ShellUtils.IsProcessAlive(result.ProcessId)) {
 					reporter?.AppendTraceLine("Fetching remote took too long. Skipping until it finishes downloading in the background.");
 
 					// Write process id in file to track when it finished downloading server changes.
