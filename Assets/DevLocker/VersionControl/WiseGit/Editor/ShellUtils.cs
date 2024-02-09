@@ -59,6 +59,7 @@ namespace DevLocker.VersionControl.WiseGit.Shell
 		// If result error message contains this string token, the operation was interrupted due to time out.
 		public const string TIME_OUT_ERROR_TOKEN = "[ERR_TIME_OUT]";
 
+		[DebuggerNonUserCode]
 		public static bool IsProcessAlive(int processId)
 		{
 			try {
