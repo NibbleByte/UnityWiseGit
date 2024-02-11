@@ -426,7 +426,11 @@ namespace DevLocker.VersionControl.WiseGit
 
 			// If no info is returned for path, the status is normal. Reflect this when searching for Empty depth.
 			if (emptyOutput) {
-				var statusData = new GitStatusData() { Status = VCFileStatus.Normal, Path = path };
+				var ignoredPaths = GetIgnoredPaths(path, true);
+
+				// ... it may be empty because it is ignored.
+				var status = ignoredPaths.Length == 0 ? VCFileStatus.Normal : VCFileStatus.Ignored;
+				var statusData = new GitStatusData() { Status = status, Path = path };
 				locksJSONEntry.ApplyAndForgetStatus(path, out statusData.LockStatus, out statusData.LockDetails);
 
 				resultEntries.Add(statusData);
