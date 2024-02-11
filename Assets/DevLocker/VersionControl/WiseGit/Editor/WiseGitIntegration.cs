@@ -644,8 +644,22 @@ namespace DevLocker.VersionControl.WiseGit
 		{
 			string directoryArg = skipFilesInIgnoredDirectories ? "--directory" : "";
 
-			return ShellUtils.ExecuteCommand(Git_Command, $"ls-files -i -o --exclude-standard {directoryArg} -z {path}", COMMAND_TIMEOUT)
-				.Output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
+			var result = ShellUtils.ExecuteCommand(Git_Command, $"ls-files -i -o --exclude-standard {directoryArg} -z {path}", COMMAND_TIMEOUT);
+
+			// Happens for nested directory paths of ignored one, only when using --directory.
+			// fatal: git ls-files: internal error - directory entry not superset of prefix
+			if (skipFilesInIgnoredDirectories && result.Error.Contains("internal error - directory entry not superset of prefix")) {
+				// Run without the flag and filter the results. May be slower depending on the results count.
+				var ignoredPaths = GetIgnoredPaths(path, false);
+				if (ignoredPaths.Length > 0) {
+					// Yes, this path is ignored, no need to show the recursion.
+					ignoredPaths = new string[] { path };
+				}
+
+				return ignoredPaths;
+			}
+
+			return result.Output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
 		}
 
 		/// <summary>
