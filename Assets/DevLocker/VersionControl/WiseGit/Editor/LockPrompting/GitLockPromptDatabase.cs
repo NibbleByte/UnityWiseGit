@@ -110,6 +110,7 @@ namespace DevLocker.VersionControl.WiseGit.LockPrompting
 
 			// Most popular extensions?
 			if (assetPath.EndsWith(".psd", StringComparison.OrdinalIgnoreCase)
+			    || assetPath.EndsWith(".psb", StringComparison.OrdinalIgnoreCase)
 			    || assetPath.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
 			    || assetPath.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase)
 			    || assetPath.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
