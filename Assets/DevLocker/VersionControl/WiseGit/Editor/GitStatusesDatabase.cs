@@ -176,10 +176,7 @@ namespace DevLocker.VersionControl.WiseGit
 			var timings = new StringBuilder("GitStatusesDatabase Gathering Data Timings:\n");
 			var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-			var reporter = DoTraceLogs
-				? new WiseGitIntegration.ResultConsoleReporter(true, WiseGitIntegration.Silent, "GitStatusesDatabase Operations:")
-				: null;
-			using (reporter) {
+			using (var reporter = new WiseGitIntegration.ResultConsoleReporter(true, WiseGitIntegration.Silent, "GitStatusesDatabase Operations:")) {
 
 				bool offline = !m_FetchRemoteChangesCached && !m_ProjectCachedPrefs.EnableLockPrompt;
 				if (!offline) {
@@ -254,6 +251,10 @@ namespace DevLocker.VersionControl.WiseGit
 				m_UnversionedFolders = unversionedFolders.ToArray();
 				//m_NestedRepositories = nestedRepositories.ToArray();
 
+
+				if (!DoTraceLogs && LastError != StatusOperationResult.UnknownError) {
+					reporter.ClearLogsAndErrorFlag();
+				}
 			} // Dispose reporter.
 
 			timings.AppendLine("Gather Processing Data - " + (stopwatch.ElapsedMilliseconds / 1000f));

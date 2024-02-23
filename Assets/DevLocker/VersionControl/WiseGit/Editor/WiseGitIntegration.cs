@@ -624,6 +624,11 @@ namespace DevLocker.VersionControl.WiseGit
 			if (error.Contains("fatal: unable to access") || error.Contains("No such device or address"))
 				return StatusOperationResult.UnableToConnectError;
 
+			// Git version is too old and doesn't support some features. Try updating git.
+			// error: unknown option `porcelain'
+			if (error.Contains("error: unknown option"))
+				return StatusOperationResult.OldUnsupportedGitVersion;
+
 			// Git lfs is not installed properly or using an old version?
 			// Error while retrieving locks: missing protocol: ""
 			if (error.Contains("missing protocol"))
