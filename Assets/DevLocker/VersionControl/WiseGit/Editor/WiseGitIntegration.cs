@@ -364,7 +364,7 @@ namespace DevLocker.VersionControl.WiseGit
 			if (!offline) {
 				// Check what changed after our branch diverged from the remote one, only files.
 				// This works only if remote branch was fetched (downloaded) locally.
-				result = ShellUtils.ExecuteCommand(Git_Command, $"diff {GetWorkingBranchDivergingCommit()}..{GetTrackedRemoteBranch()} --name-only {path}", timeout, shellMonitor);
+				result = ShellUtils.ExecuteCommand(Git_Command, $"diff {GetWorkingBranchDivergingCommit()}..{GetTrackedRemoteBranch()} --name-only \"{path}\"", timeout, shellMonitor);
 
 				// Skip errors checks - nothing to do about them.
 				if (!result.HasErrors) {
@@ -649,7 +649,7 @@ namespace DevLocker.VersionControl.WiseGit
 		{
 			string directoryArg = skipFilesInIgnoredDirectories ? "--directory" : "";
 
-			var result = ShellUtils.ExecuteCommand(Git_Command, $"ls-files -i -o --exclude-standard {directoryArg} -z {path}", COMMAND_TIMEOUT);
+			var result = ShellUtils.ExecuteCommand(Git_Command, $"ls-files -i -o --exclude-standard {directoryArg} -z \"{GitFormatPath(path)}\"", COMMAND_TIMEOUT);
 
 			// Happens for nested directory paths of ignored one, only when using --directory.
 			// fatal: git ls-files: internal error - directory entry not superset of prefix
@@ -1657,7 +1657,7 @@ namespace DevLocker.VersionControl.WiseGit
 			}
 			*/
 
-			if (oldStatusData.Status == VCFileStatus.Unversioned) {
+			if (oldStatusData.Status == VCFileStatus.Unversioned || oldStatusData.Status == VCFileStatus.Ignored || oldStatusData.Status == VCFileStatus.Excluded) {
 				return AssetMoveResult.DidNotMove;
 			}
 
@@ -1674,7 +1674,6 @@ namespace DevLocker.VersionControl.WiseGit
 			}
 
 			if (m_PersonalPrefs.AskOnMovingFolders && isFolder
-				&& oldStatusData.Status != VCFileStatus.Unversioned
 				//&& newStatusData.Status != VCFileStatus.Deleted	// Was already asked, don't do it again.
 				&& !Application.isBatchMode) {
 
