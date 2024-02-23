@@ -149,7 +149,8 @@ namespace DevLocker.VersionControl.WiseGit
 		NotWorkingCopy = 60,        // This can be returned when project is not a valid git checkout. (Probably)
 		ExecutableNotFound = 65,    // Could not find the command executable. The user hasn't installed their CLI (Command Line Interface) so we're missing an "git.exe" in the PATH environment.
 		TargetPathNotFound = 70,	// File or directory not found on disk.
-		BadLFSSupport = 75,			// LFS is not installed, not configured properly or an old version is used.
+		OldUnsupportedGitVersion = 75, // Git version is too old and doesn't support some features. Try updating git.
+		BadLFSSupport = 78,			// LFS is not installed, not configured properly or an old version is used.
 		Timeout = 90,				// Operation timed out.
 		UnknownError = 100,			// Failed for any other reason.
 	}
