@@ -1657,7 +1657,7 @@ namespace DevLocker.VersionControl.WiseGit
 			}
 			*/
 
-			if (oldStatusData.Status == VCFileStatus.Unversioned) {
+			if (oldStatusData.Status == VCFileStatus.Unversioned || oldStatusData.Status == VCFileStatus.Ignored || oldStatusData.Status == VCFileStatus.Excluded) {
 				return AssetMoveResult.DidNotMove;
 			}
 
@@ -1674,7 +1674,6 @@ namespace DevLocker.VersionControl.WiseGit
 			}
 
 			if (m_PersonalPrefs.AskOnMovingFolders && isFolder
-				&& oldStatusData.Status != VCFileStatus.Unversioned
 				//&& newStatusData.Status != VCFileStatus.Deleted	// Was already asked, don't do it again.
 				&& !Application.isBatchMode) {
 
