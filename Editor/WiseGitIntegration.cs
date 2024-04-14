@@ -1573,8 +1573,17 @@ namespace DevLocker.VersionControl.WiseGit
 
 					// fatal: pathspec '...' did not match any files
 					// Unversioned file got deleted or is already marked for deletion (staged). Let someone else show the error if any.
+					// Or deleted folder was empty.
 					if (result.Error.Contains("did not match any files")) {
 						reporter.ClearLogsAndErrorFlag();
+
+						// If it was an empty folder, make sure we delete the meta, or it may confuse the git clients.
+						// (example - rename empty folder, then delete it. From Added must turn to Deleted stats)
+						if (Directory.Exists(path)) {
+							ShellUtils.ExecuteCommand(Git_Command, $"rm --force \"{GitFormatPath(path + ".meta")}\"", COMMAND_TIMEOUT, reporter);
+							reporter.ResetErrorFlag();	// Whatever happens, happens...
+						}
+
 						return AssetDeleteResult.DidNotDelete;
 					}
 
