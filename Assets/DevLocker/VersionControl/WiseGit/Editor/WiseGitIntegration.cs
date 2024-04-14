@@ -439,6 +439,16 @@ namespace DevLocker.VersionControl.WiseGit
 
 			resultEntries.AddRange(ExtractStatuses(result.Output));
 
+			// NOTE: if file was marked as moved or deleted, and another unstaged file is present in the original location
+			//		 it will be returned as unknown status, after the moved/deleted status (i.e. 2 entries for the same file).
+			// Example:
+			// > git status -s
+			//   R  Foo.png -> Bar2.png
+			//   D  README.md
+			//   ?? Foo.png
+			//   ?? README.md
+
+
 			for(int i = 0; i < resultEntries.Count; ++i) {
 				GitStatusData statusData = resultEntries[i];
 
@@ -546,6 +556,26 @@ namespace DevLocker.VersionControl.WiseGit
 			}
 
 			GitStatusData statusData = resultEntries.FirstOrDefault();
+
+			// NOTE: if file was marked as moved or deleted, and another unstaged file is present in the original location
+			//		 it will be returned as unknown status, after the moved/deleted status (i.e. 2 entries for the same file).
+			// Example:
+			// > git status -s
+			//   R  Foo.png -> Bar2.png
+			//   D  README.md
+			//   ?? Foo.png
+			//   ?? README.md
+			//
+			// NOTE2: the git status command for a specific file returns D even when file was actually renamed (R).
+
+			if (statusData.Status == VCFileStatus.Deleted
+				&& resultEntries.Count == 2
+				&& resultEntries[1].Status == VCFileStatus.Unversioned
+				&& resultEntries[0].Path == resultEntries[1].Path
+				) {
+				statusData = resultEntries[1];
+			}
+
 			statusData.Path = originalPath;	// Restore original path in case of folder.
 
 			// If no path was found, error happened.
