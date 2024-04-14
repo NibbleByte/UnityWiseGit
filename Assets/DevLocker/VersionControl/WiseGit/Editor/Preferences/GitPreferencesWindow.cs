@@ -528,13 +528,13 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 			style.name = "";	// UIElements matches button styles by name and overrides everything.
 
 			if (style.hover.background == null) {
-				var path = EditorGUIUtility.isProSkin ? "Editor/GitElementsUI/Git_Button_Hover_Dark" : "Editor/GitElementsUI/Git_Button_Hover_Light";
+				var path = EditorGUIUtility.isProSkin ? "GitElementsUI/Git_Button_Hover_Dark" : "GitElementsUI/Git_Button_Hover_Light";
 				style.hover.background = Resources.Load<Texture2D>(path);
 
 			}
 
 			if (style.active.background == null) {
-				var path = EditorGUIUtility.isProSkin ? "Editor/GitElementsUI/Git_Button_Active_Dark" : "Editor/GitElementsUI/Git_Button_Active_Light";
+				var path = EditorGUIUtility.isProSkin ? "GitElementsUI/Git_Button_Active_Dark" : "GitElementsUI/Git_Button_Active_Light";
 				style.active.background = Resources.Load<Texture2D>(path);
 
 			}
@@ -548,7 +548,7 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 
 			style.name = "";	// UIElements matches button styles by name and overrides everything.
 			if (style.normal.background == null) {
-				var path = EditorGUIUtility.isProSkin ? "Editor/GitElementsUI/Git_Border_Normal_Dark" : "Editor/GitElementsUI/Git_Border_Normal_Light";
+				var path = EditorGUIUtility.isProSkin ? "GitElementsUI/Git_Border_Normal_Dark" : "GitElementsUI/Git_Border_Normal_Light";
 				style.normal.background = Resources.Load<Texture2D>(path);
 			}
 		}
