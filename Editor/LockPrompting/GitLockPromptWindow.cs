@@ -120,8 +120,8 @@ namespace DevLocker.VersionControl.WiseGit.LockPrompting
 
 		private void InitializeStyles()
 		{
-			m_RevertContent = GitPreferencesManager.LoadTexture("Editor/BranchesIcons/Git-Revert", "Revert asset");
-			m_DiffContent = GitPreferencesManager.LoadTexture("Editor/BranchesIcons/Git-ConflictsScan-Pending", "Check changes");
+			m_RevertContent = GitPreferencesManager.LoadTexture("BranchesIcons/Git-Revert", "Revert asset");
+			m_DiffContent = GitPreferencesManager.LoadTexture("BranchesIcons/Git-ConflictsScan-Pending", "Check changes");
 
 			// Copied from GitBranchSelectorWindow.
 			MiniIconButtonlessStyle = new GUIStyle(GUI.skin.button);

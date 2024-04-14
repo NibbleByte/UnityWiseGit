@@ -240,23 +240,23 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 		private void LoadTextures()
 		{
 			FileStatusIcons = new GUIContent[Enum.GetValues(typeof(VCFileStatus)).Length];
-			FileStatusIcons[(int)VCFileStatus.Normal] = LoadTexture("Editor/GitOverlayIcons/Git_Normal_Icon");
-			FileStatusIcons[(int)VCFileStatus.Added] = LoadTexture("Editor/GitOverlayIcons/Git_Added_Icon");
-			FileStatusIcons[(int)VCFileStatus.Modified] = LoadTexture("Editor/GitOverlayIcons/Git_Modified_Icon");
-			FileStatusIcons[(int)VCFileStatus.Replaced] = LoadTexture("Editor/GitOverlayIcons/Git_Modified_Icon");
-			FileStatusIcons[(int)VCFileStatus.Deleted] = LoadTexture("Editor/GitOverlayIcons/Git_Deleted_Icon");
-			FileStatusIcons[(int)VCFileStatus.Conflicted] = LoadTexture("Editor/GitOverlayIcons/Git_Conflict_Icon");
-			FileStatusIcons[(int)VCFileStatus.Ignored] = LoadTexture("Editor/GitOverlayIcons/Git_Ignored_Icon", "This item is in a git-ignore list. It is not tracked by git.");
-			FileStatusIcons[(int)VCFileStatus.Unversioned] = LoadTexture("Editor/GitOverlayIcons/Git_Unversioned_Icon");
-			FileStatusIcons[(int)VCFileStatus.Excluded] = LoadTexture("Editor/GitOverlayIcons/Git_ReadOnly_Icon", "This item is excluded from monitoring by WiseGit, but it may still be tracked by git. Check the WiseGit preferences - Excludes setting.");
+			FileStatusIcons[(int)VCFileStatus.Normal] = LoadTexture("GitOverlayIcons/Git_Normal_Icon");
+			FileStatusIcons[(int)VCFileStatus.Added] = LoadTexture("GitOverlayIcons/Git_Added_Icon");
+			FileStatusIcons[(int)VCFileStatus.Modified] = LoadTexture("GitOverlayIcons/Git_Modified_Icon");
+			FileStatusIcons[(int)VCFileStatus.Replaced] = LoadTexture("GitOverlayIcons/Git_Modified_Icon");
+			FileStatusIcons[(int)VCFileStatus.Deleted] = LoadTexture("GitOverlayIcons/Git_Deleted_Icon");
+			FileStatusIcons[(int)VCFileStatus.Conflicted] = LoadTexture("GitOverlayIcons/Git_Conflict_Icon");
+			FileStatusIcons[(int)VCFileStatus.Ignored] = LoadTexture("GitOverlayIcons/Git_Ignored_Icon", "This item is in a git-ignore list. It is not tracked by git.");
+			FileStatusIcons[(int)VCFileStatus.Unversioned] = LoadTexture("GitOverlayIcons/Git_Unversioned_Icon");
+			FileStatusIcons[(int)VCFileStatus.Excluded] = LoadTexture("GitOverlayIcons/Git_ReadOnly_Icon", "This item is excluded from monitoring by WiseGit, but it may still be tracked by git. Check the WiseGit preferences - Excludes setting.");
 
 			LockStatusIcons = new GUIContent[Enum.GetValues(typeof(VCLockStatus)).Length];
-			LockStatusIcons[(int)VCLockStatus.LockedHere] = LoadTexture("Editor/GitOverlayIcons/Locks/Git_LockedHere_Icon", "You have locked this file.\nClick for more details.");
-			LockStatusIcons[(int)VCLockStatus.BrokenLock] = LoadTexture("Editor/GitOverlayIcons/Locks/Git_LockedOther_Icon", "You have a lock that is no longer valid (someone else stole it and released it).\nClick for more details.");
-			LockStatusIcons[(int)VCLockStatus.LockedOther] = LoadTexture("Editor/GitOverlayIcons/Locks/Git_LockedOther_Icon", "Someone else locked this file.\nClick for more details.");
-			LockStatusIcons[(int)VCLockStatus.LockedButStolen] = LoadTexture("Editor/GitOverlayIcons/Locks/Git_LockedOther_Icon", "Your lock was stolen by someone else.\nClick for more details.");
+			LockStatusIcons[(int)VCLockStatus.LockedHere] = LoadTexture("GitOverlayIcons/Locks/Git_LockedHere_Icon", "You have locked this file.\nClick for more details.");
+			LockStatusIcons[(int)VCLockStatus.BrokenLock] = LoadTexture("GitOverlayIcons/Locks/Git_LockedOther_Icon", "You have a lock that is no longer valid (someone else stole it and released it).\nClick for more details.");
+			LockStatusIcons[(int)VCLockStatus.LockedOther] = LoadTexture("GitOverlayIcons/Locks/Git_LockedOther_Icon", "Someone else locked this file.\nClick for more details.");
+			LockStatusIcons[(int)VCLockStatus.LockedButStolen] = LoadTexture("GitOverlayIcons/Locks/Git_LockedOther_Icon", "Your lock was stolen by someone else.\nClick for more details.");
 
-			RemoteStatusIcons = LoadTexture("Editor/GitOverlayIcons/Others/Git_RemoteChanges_Icon", "Asset is out of date. Update to avoid conflicts.");
+			RemoteStatusIcons = LoadTexture("GitOverlayIcons/Others/Git_RemoteChanges_Icon", "Asset is out of date. Update to avoid conflicts.");
 		}
 
 		public static GUIContent LoadTexture(string path, string tooltip = null)
