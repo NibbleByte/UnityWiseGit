@@ -11,10 +11,6 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 	// SnailGit: https://langui.net/snailgit/
 	// Use the "/Applications/SnailGit.app/Contents/Resources/snailgit.sh" executable as much as possible.
 	// usage: /Applications/SnailGitLite.app/Contents/Resources/snailgit.sh <subcommand> [args]
-	// Available subcommands:
-	// add, checkout (co), cleanup, commit (ci), delete (del, remove, rm), diff (di), export,
-	// help (?, h), ignore, import, info, lock, log, merge, relocate, repo-browser (rb),
-	// revert, switch, unlock, update (up)
 	internal class SnailGitContextMenus : GitContextMenusBase
 	{
 		private const string ClientLightCommand = "/Applications/SnailGitLite.app/Contents/Resources/snailgit.sh";
@@ -42,26 +38,52 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 			});
 		}
 
+		private void ExecuteProtocol(string action, string workingFolder)
+        {
+			if (!workingFolder.StartsWith('/')) {
+				workingFolder = Path.Combine(WiseGitIntegration.ProjectRootNative, workingFolder);
+            }
+
+			// The snailgit.sh currently doesn't accept somne actions, but with some reverse engineering, managed to make it work like this.
+			// open "snailgitfree://git-merge/SomeFolderHere/UnityProject/Assets"
+			string url = $"{GetClientProtocol()}://{action}{System.Uri.EscapeUriString(workingFolder)}";
+			Application.OpenURL(url);
+		}
+
+		private void ExecuteProtocol(string action, string workingFolder, string path)
+		{
+			if (!workingFolder.StartsWith('/')) {
+				workingFolder = Path.Combine(WiseGitIntegration.ProjectRootNative, workingFolder);
+			}
+			if (!path.StartsWith('/')) {
+				path = Path.Combine(WiseGitIntegration.ProjectRootNative, path);
+			}
+
+			// The snailgit.sh currently doesn't accept somne actions, but with some reverse engineering, managed to make it work like this.
+			// open "snailgitfree://git-merge/SomeFolderHere/UnityProject/Assets"
+			string url = $"{GetClientProtocol()}://{action}{System.Uri.EscapeUriString(workingFolder)}?{System.Uri.EscapeUriString(path)}";
+			Application.OpenURL(url);
+		}
+
 		private string GetClientProtocol() => File.Exists(ClientPremiumCommand) ? ClientPremiumProtocol : ClientLightProtocol;
 
 		public override void CheckChanges(IEnumerable<string> assetPaths, bool includeMeta, bool wait = false)
 		{
-			if (!assetPaths.Any())
+			if (assetPaths.Count() == 1 && assetPaths.All(File.Exists)) {
+				DiffChanges(assetPaths.First(), wait);
 				return;
+            }
 
-			var path = GetWorkingPath(assetPaths);
-			if (string.IsNullOrEmpty(path))
-				return;
-
-			// The snailgit.sh currently doesn't accept "check-for-modifications" argument, but with some reverse engineering, managed to make it work like this.
-			// open "snailgitfree://check-for-modifications/SomeFolderHere/UnityProject/Assets"
-			string url = $"{GetClientProtocol()}://check-for-modifications{System.Uri.EscapeUriString(Path.Combine(WiseGitIntegration.ProjectRootNative, path))}";
-			Application.OpenURL(url);
+			// Doesn't support cleanup command (doesn't seem to have such a window?)
+			UnityEditor.EditorUtility.DisplayDialog("Not supported", "Sorry, check changes functionality is currently not supported by SnailGit.", "Sad");
 		}
 
 		public override void DiffChanges(string assetPath, bool wait = false)
 		{
-			CheckChanges(new string[] { assetPath }, false, wait);
+			var result = ExecuteCommand("diff", Path.Combine(WiseGitIntegration.ProjectRootNative, assetPath), WiseGitIntegration.ProjectRootNative, wait);
+			if (result.HasErrors) {
+				Debug.LogError($"Git Error: {result.Error}");
+			}
 		}
 
 		public override void Pull(bool wait = false)
@@ -74,10 +96,7 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 
 		public override void Merge(bool wait = false)
 		{
-			var result = ExecuteCommand("merge", WiseGitIntegration.ProjectRootNative, wait);
-			if (result.HasErrors) {
-				Debug.LogError($"Git Error: {result.Error}");
-			}
+			ExecuteProtocol("git-merge", WiseGitIntegration.ProjectRootNative);
 		}
 
 		public override void Fetch(bool wait = false)
@@ -133,6 +152,9 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 			var result = ExecuteCommand("add", pathsArg, WiseGitIntegration.ProjectRootNative, wait);
 			if (result.HasErrors) {
 				Debug.LogError($"Git Error: {result.Error}");
+			} else {
+				// No window is shown, add happens instantly.
+				GitStatusesDatabase.Instance.InvalidateDatabase();
 			}
 		}
 
@@ -141,14 +163,13 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 			if (!assetPaths.Any())
 				return;
 
-			// If trying to revert directory that was just added, show the parent, so the directory meta is visible. Exclude root "Assets" and "Packages" folder.
-			var fixedPaths = assetPaths.Select(path =>
-					(path.Contains('/') && Directory.Exists(path) && WiseGitIntegration.GetStatus(path).Status == VCFileStatus.Added)
-					? Path.GetDirectoryName(path)
-					: path
-					);
+			var metas = assetPaths
+				.Select(path => path + ".meta")
+				;
 
-			var result = ExecuteCommand("revert", GetWorkingPath(assetPaths), wait);
+			var pathsArg = AssetPathsToContextPaths(includeMeta ? assetPaths.Concat(metas) : assetPaths, false);
+
+			var result = ExecuteCommand("revert", pathsArg, WiseGitIntegration.ProjectRootNative, wait);
 			if (result.HasErrors) {
 				Debug.LogError($"Git Error: {result.Error}");
 			}
@@ -156,8 +177,7 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 
 		public override void ResolveAll(bool wait = false)
 		{
-			// Doesn't support resolve command (doesn't seem to have such a window?)
-			UnityEditor.EditorUtility.DisplayDialog("Not supported", "Sorry, resolve all functionality is currently not supported by SnailGit.", "Sad");
+			ExecuteProtocol("git-resolve", WiseGitIntegration.ProjectRootNative);
 		}
 
 		public override void Resolve(string assetPath, bool wait = false)
@@ -172,9 +192,19 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 			if (!assetPaths.Any())
 				return;
 
-			var result = ExecuteCommand("lock", AssetPathsToContextPaths(assetPaths, includeMeta), WiseGitIntegration.ProjectRootNative, wait);
-			if (result.HasErrors) {
-				Debug.LogError($"Git Error: {result.Error}");
+			if (assetPaths.Any(Directory.Exists)) {
+				UnityEditor.EditorUtility.DisplayDialog("Cannot Lock Directories", "Directory locking is not supported. Please select specific files instead.", "Ok");
+				return;
+			}
+
+			// Doesn't support locks (doesn't seem to have such a window?)
+			using (var reporter = new WiseGitIntegration.ResultConsoleReporter(true, WiseGitIntegration.Silent, "SnailGitContextMenus Operations:")) {
+				var result = WiseGitIntegration.LockFiles(assetPaths, false, WiseGitIntegration.ONLINE_COMMAND_TIMEOUT, reporter);
+				if (result != LockOperationResult.Success) {
+					Debug.LogError($"Git Error: {result}");
+				} else {
+					GitStatusesDatabase.Instance.InvalidateDatabase();
+				}
 			}
 		}
 
@@ -183,9 +213,19 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 			if (!assetPaths.Any())
 				return;
 
-			var result = ExecuteCommand("unlock", AssetPathsToContextPaths(assetPaths, includeMeta), WiseGitIntegration.ProjectRootNative, wait);
-			if (result.HasErrors) {
-				Debug.LogError($"Git Error: {result.Error}");
+			if (assetPaths.Any(Directory.Exists)) {
+				UnityEditor.EditorUtility.DisplayDialog("Cannot Lock Directories", "Directory locking is not supported. Please select specific files instead.", "Ok");
+				return;
+			}
+
+			// Doesn't support locks (doesn't seem to have such a window?)
+			using (var reporter = new WiseGitIntegration.ResultConsoleReporter(true, WiseGitIntegration.Silent, "SnailGitContextMenus Operations:")) {
+				var result = WiseGitIntegration.UnlockFiles(assetPaths, false, WiseGitIntegration.ONLINE_COMMAND_TIMEOUT, reporter);
+				if (result != LockOperationResult.Success) {
+					Debug.LogError($"Git Error: {result}");
+				} else {
+					GitStatusesDatabase.Instance.InvalidateDatabase();
+				}
 			}
 		}
 
@@ -194,12 +234,9 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 			if (string.IsNullOrEmpty(assetPath))
 				return;
 
-			var pathArg = Directory.Exists(assetPath) ? assetPath : Path.GetDirectoryName(assetPath);
+			var workingFolder = Directory.Exists(assetPath) ? assetPath : Path.GetDirectoryName(assetPath);
 
-			var result = ExecuteCommand("log", pathArg, wait);
-			if (result.HasErrors) {
-				Debug.LogError($"Git Error: {result.Error}");
-			}
+			ExecuteProtocol("git-log", workingFolder, assetPath);
 		}
 
 		public override void Blame(string assetPath, bool wait = false)
@@ -217,27 +254,20 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 
 		public override void Cleanup(bool wait = false)
 		{
-			// NOTE: SnailGit doesn't pop up dialog for clean up. It just does some shady stuff in the background and a notification is shown some time later.
-			var result = ExecuteCommand("cleanup", WiseGitIntegration.ProjectRootNative, wait);
-			if (result.HasErrors) {
-				Debug.LogError($"Git Error: {result.Error}");
-			}
+			// Doesn't support cleanup command (doesn't seem to have such a window?)
+			UnityEditor.EditorUtility.DisplayDialog("Not supported", "Sorry, clean up functionality is currently not supported by SnailGit.", "Sad");
 		}
 
 		public override void RepoBrowser(string path, string remoteBranch, bool wait = false)
 		{
-			// SnailGit Repo-Browser doesn't accept URLs, only working copy paths which is no good for us.
-			Debug.LogError($"SnailGit doesn't support Repo-Browser very well. Opening Repo-Browser for the current working copy.");
+			var workingFolder = Directory.Exists(path) ? path : Path.GetDirectoryName(path);
 
-			var result = ExecuteCommand("repo-browser", string.Empty, WiseGitIntegration.ProjectRootNative, wait);
-			if (result.HasErrors) {
-				Debug.LogError($"Git Error: {result.Error}");
-			}
+			ExecuteProtocol("repo-browser", workingFolder);
 		}
 
 		public override void Switch(bool wait = false)
 		{
-			var result = ExecuteCommand("switch", string.Empty, WiseGitIntegration.ProjectRootNative, wait);
+			var result = ExecuteCommand("checkout", WiseGitIntegration.ProjectRootNative, wait);
 			if (result.HasErrors) {
 				Debug.LogError($"Git Error: {result.Error}");
 			}

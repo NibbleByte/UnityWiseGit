@@ -355,40 +355,39 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 			// System.ComponentModel.Win32Exception (0x80004005): ApplicationName='...', CommandLine='...', Native error= The system cannot find the file specified.
 			// Could not find the command executable. The user hasn't installed their CLI (Command Line Interface) so we're missing an "git.exe" in the PATH environment.
 			// This is allowed only if there isn't ProjectPreference specified CLI path.
-			if (gitError.Contains("0x80004005") || gitError.Contains("IOException")) {
+			if (gitError.Contains("0x80004005") || gitError.Contains("IOException")
+				// MacOS errors when git is not installed
+				|| gitError.Contains("xcrun: error: active developer path") // xcrun: error: active developer path ("/Library/Developer/CommandLineTools") does not exist
+				|| gitError.Contains("No developer tools were found", StringComparison.OrdinalIgnoreCase)
+				|| gitError.Contains("failed to locate", StringComparison.OrdinalIgnoreCase)
+				) {
 
 #if UNITY_EDITOR_OSX
-				// For some reason OSX doesn't have the git binaries set to the PATH environment by default.
-				// If that is the case and we find them at the usual place, just set it as a personal preference.
+				// In case git isn't located at the PATH locations, try to find the git executable at the usual place, just set it as a personal preference.
 				if (string.IsNullOrWhiteSpace(PersonalPrefs.GitCLIPath)) {
 
 					// Just shooting in the dark where git could be installed.
 					string[] osxDefaultBinariesPaths = new string[] {
-						"/usr/local/bin/git",
 						"/usr/bin/git",
+						"/usr/local/bin/git",
 						"/Applications/Xcode.app/Contents/Developer/usr/bin/git",
-						"/opt/subversion/bin/git",
+						"/Applications/Xcode.app/Contents/Developer/usr/libexec/git-core",
 						"/opt/local/bin/git",
 
 						//
 						// SnailGit comes with bundled up git binaries. Use those if needed, starting with the higher version. Premium and free.
+						// DON'T USE IT as it doesn't support LFS, check the preferences.
 						//
-
+						/*
 						// Arm64
-						"/Applications/SnailGit.app/Contents/PlugIns/SnailGitExtension.appex/Contents/XPCServices/SnailGitCache.xpc/Contents/Resources/subversion/arm64/1.14.x/git",
-						"/Applications/SnailGitLite.app/Contents/PlugIns/SnailGitExtension.appex/Contents/XPCServices/SnailGitCache.xpc/Contents/Resources/subversion/arm64/1.14.x/git",
+						"/Applications/SnailGit.app/Contents/PlugIns/SnailGitExtension.appex/Contents/XPCServices/SnailGitCache.xpc/Contents/Resources/git/arm64/bin/git",
+						"/Applications/SnailGitLite.app/Contents/PlugIns/SnailGitFreeExtension.appex/Contents/XPCServices/SnailGitFreeCache.xpc/Contents/Resources/git/arm64/bin/git",
 
 						// Intel x64
-						"/Applications/SnailGit.app/Contents/PlugIns/SnailGitExtension.appex/Contents/XPCServices/SnailGitCache.xpc/Contents/Resources/subversion/x86_64/1.14.x/git",
-						"/Applications/SnailGit.app/Contents/PlugIns/SnailGitExtension.appex/Contents/XPCServices/SnailGitCache.xpc/Contents/Resources/subversion/x86_64/1.11.x/git",
-						"/Applications/SnailGit.app/Contents/PlugIns/SnailGitExtension.appex/Contents/XPCServices/SnailGitCache.xpc/Contents/Resources/subversion/x86_64/1.10.x/git",
-						"/Applications/SnailGit.app/Contents/PlugIns/SnailGitExtension.appex/Contents/XPCServices/SnailGitCache.xpc/Contents/Resources/subversion/x86_64/1.9.x/git",
+						"/Applications/SnailGit.app/Contents/PlugIns/SnailGitExtension.appex/Contents/XPCServices/SnailGitCache.xpc/Contents/Resources/git/x86_64/bin/git",
 
-
-						"/Applications/SnailGitLite.app/Contents/PlugIns/SnailGitExtension.appex/Contents/XPCServices/SnailGitCache.xpc/Contents/Resources/subversion/x86_64/1.14.x/git",
-						"/Applications/SnailGitLite.app/Contents/PlugIns/SnailGitExtension.appex/Contents/XPCServices/SnailGitCache.xpc/Contents/Resources/subversion/x86_64/1.11.x/git",
-						"/Applications/SnailGitLite.app/Contents/PlugIns/SnailGitExtension.appex/Contents/XPCServices/SnailGitCache.xpc/Contents/Resources/subversion/x86_64/1.10.x/git",
-						"/Applications/SnailGitLite.app/Contents/PlugIns/SnailGitExtension.appex/Contents/XPCServices/SnailGitCache.xpc/Contents/Resources/subversion/x86_64/1.9.x/git",
+						"/Applications/SnailGitLite.app/Contents/PlugIns/SnailGitFreeExtension.appex/Contents/XPCServices/SnailGitFreeCache.xpc/Contents/Resources/git/x86_64/bin/git",
+						*/
 					};
 
 					foreach(string osxPath in osxDefaultBinariesPaths) {
@@ -418,7 +417,7 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 
 				WiseGitIntegration.LogStatusErrorHint(StatusOperationResult.ExecutableNotFound, $"\nTemporarily disabling WiseGit integration. Please fix the error and restart Unity.\n\n{gitError}");
 #if UNITY_EDITOR_OSX
-				Debug.LogError($"If you installed Git via Homebrew or similar, you may need to add \"/usr/local/bin\" (or wherever git binaries can be found) to your PATH environment variable and restart. Example:\nsudo launchctl config user path /usr/local/bin\nAlternatively, you may add git CLI path in your WiseGit preferences at:\n{GitPreferencesWindow.PROJECT_PREFERENCES_MENU}");
+				Debug.LogError($"Git can be installed with the \"Standalone command line developer tools\" by executing this 'xcode-select --install' in the terminal. You also need to install the LFS (Large File Support) extension separately from https://git-lfs.com");
 #endif
 				return;
 			}

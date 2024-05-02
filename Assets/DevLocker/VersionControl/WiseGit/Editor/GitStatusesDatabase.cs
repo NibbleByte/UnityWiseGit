@@ -288,7 +288,9 @@ namespace DevLocker.VersionControl.WiseGit
 			if (!File.Exists(fetchProcessIdFile)) {
 				var result = ShellUtils.ExecuteCommand(new ShellUtils.ShellArgs {
 					Command = WiseGitIntegration.Git_Command,
-					Args = $"fetch --atomic --porcelain {remote} {WiseGitIntegration.GetWorkingBranch()}",
+					// "--porcelain" is too modern, may not be supported by recent git versions. We don't care about it anyway.
+                    // Use -q instead, or it will spit out spam in the error stream.
+					Args = $"fetch --atomic -q {remote} {WiseGitIntegration.GetWorkingBranch()}",
 					WaitForOutput = true,
 					WaitTimeout = WiseGitIntegration.ONLINE_COMMAND_TIMEOUT,
 					SkipTimeoutError = true,
