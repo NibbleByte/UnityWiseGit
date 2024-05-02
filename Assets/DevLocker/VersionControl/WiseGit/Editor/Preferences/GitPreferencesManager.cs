@@ -398,12 +398,16 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 
 						try {
 							string secondGitError = WiseGitIntegration.CheckForGitErrors();
-							if (!string.IsNullOrEmpty(secondGitError))
+							// Exclude "not a working copy". Check below.
+							if (!string.IsNullOrEmpty(secondSvnError) && !secondSvnError.Contains("fatal: not a git repository"))
 								continue;
 
 							PersonalPrefs.EnableCoreIntegration = true;	// Save this enabled!
 							SavePreferences(PersonalPrefs, ProjectPrefs);
 							Debug.Log($"Git binaries missing in PATH environment variable. Found them at \"{osxPath}\". Setting this as personal preference.\n\n{gitError}");
+
+							CheckGitSupport();
+
 							return;
 
 						} catch(Exception) {
