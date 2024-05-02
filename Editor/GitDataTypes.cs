@@ -52,12 +52,13 @@ namespace DevLocker.VersionControl.WiseGit
 
 	public enum LockOperationResult
 	{
-		Success = 0,            // Operation succeeded.
+		Success = 0,				// Operation succeeded.
 
-		RemoteHasChanges,       // NOT SUPPORTED ON LFS FOR NOW!!! Newer version of the asset exists in the server repository. Update first.
-		LockAlreadyExists,      // File is already locked by THIS or another working copy (can be the same user). Use Force to enforce the operation.
+		RemoteHasChanges,			// NOT SUPPORTED ON LFS FOR NOW!!! Newer version of the asset exists in the server repository. Update first.
+		LockAlreadyExists,			// File is already locked by THIS or another working copy (can be the same user). Use Force to enforce the operation.
 		BlockedByUncommittedChanges, // Cannot unlock file with uncommitted changes (as it wants to make the file read-only). Use force.
-		InsufficientPrivileges, // User has insufficient privileges (probably needs to be admin/owner).
+		InsufficientPrivileges,		// User has insufficient privileges (probably needs to be admin/owner).
+		DirectoryLockNotSupported,	// Locking directories is not supported.
 
 		// Copy-pasted from StatusOperationResult
 		AuthenticationFailed = 50,  // User needs to log in using normal git client and save their authentication.

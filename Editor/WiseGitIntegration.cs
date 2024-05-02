@@ -661,7 +661,9 @@ namespace DevLocker.VersionControl.WiseGit
 
 			// Git lfs is not installed properly or using an old version?
 			// Error while retrieving locks: missing protocol: ""
-			if (error.Contains("missing protocol"))
+			// OR
+			// git: 'lfs' is not a git command. See 'git --help'.
+			if (error.Contains("missing protocol") || error.Contains("'lfs' is not a git command."))
 				return StatusOperationResult.BadLFSSupport;
 
 			// Operation took too long, shell utils time out kicked in.
@@ -748,6 +750,11 @@ namespace DevLocker.VersionControl.WiseGit
 				// NOTE: to check if lock is ours or not, we need to parse the user that owns it, which is too much hassle for now.
 				if (result.Error.Contains("failed: Lock exists"))
 					return LockOperationResult.LockAlreadyExists;
+
+				// cannot lock directory: ...
+				// Locking directories is not supported.
+				if (result.Error.Contains("cannot lock directory"))
+					return LockOperationResult.DirectoryLockNotSupported;
 
 				// Sadly, lfs doesn't care if remote has changes for this file.
 				//if (result.Error.Contains("???"))
@@ -838,6 +845,11 @@ namespace DevLocker.VersionControl.WiseGit
 				// Unversioned file was locked, then moved. Unlocking the old location produces this error.
 				if (result.Error.Contains("The system cannot find the file specified"))
 					return LockOperationResult.TargetPathNotFound;
+
+				// Unable to determine path: cannot lock directory: ...
+				// Locking directories is not supported.
+				if (result.Error.Contains("cannot lock directory"))
+					return LockOperationResult.DirectoryLockNotSupported;
 
 				return (LockOperationResult) ParseCommonStatusError(result.Error);
 			}
@@ -1506,7 +1518,9 @@ namespace DevLocker.VersionControl.WiseGit
 
 		internal static void PromptForAuth(string path)
 		{
-			ShellUtils.ExecutePrompt(Git_Command, $"fetch", path);
+			string hint = "\nNOTE: You may need to enter your Personal Access Token as your password.\n      Check with your provider.\n";
+
+			ShellUtils.ExecutePrompt(Git_Command, $"lfs locks", path, hint);
 
 #if UNITY_EDITOR_OSX
 			// Interact with the user since we don't know when the terminal will close.
@@ -1803,6 +1817,24 @@ namespace DevLocker.VersionControl.WiseGit
 					displayMessage = "Git Error: Unable to connect to git remote server. Check your network connection. Overlay icons may not work correctly.";
 					break;
 
+				case StatusOperationResult.OldUnsupportedGitVersion:
+					displayMessage = "Git Error: Your git version is too old. Please update to the latest version.";
+					break;
+
+				case StatusOperationResult.BadLFSSupport:
+					displayMessage = "Git Error: LFS (Large File Support) extension is missing or outdated. Please install the latest LFS extension.";
+
+#if UNITY_EDITOR_OSX
+					// LFS installed but Unity doesn't find it: https://github.com/sublimehq/sublime_merge/issues/1438#issuecomment-1621436375
+					// Also this: https://medium.com/@harendraprasadtest/jenkins-does-not-recognise-git-lfs-on-mac-error-git-lfs-is-not-a-git-command-9bfbda030c3e
+					displayMessage += "\nIf LFS is installed, but you still get this error it means 'git-lfs' executable is not in the same directory as the 'git' executable\n" +
+                        "Run 'git --exec-path' and 'where git-lfs' in the terminal to see their locations.\n" +
+                        "Run this to make a git-lfs link at the git location:\n" +
+						"> sudo ln -s \"$(which git-lfs)\" \"$(git --exec-path)/git-lfs\"\n" +
+						"If this doesn't work try copying it instead of making a link, but remember to update it with the original.";
+#endif
+					break;
+
 				case StatusOperationResult.ExecutableNotFound:
 					string userPath = m_PersonalPrefs.GitCLIPath;
 
@@ -1812,7 +1844,7 @@ namespace DevLocker.VersionControl.WiseGit
 
 					if (string.IsNullOrEmpty(userPath)) {
 						displayMessage = $"Git CLI (Command Line Interface) not found by WiseGit. " +
-							$"Please install it or specify path to a valid \"git\" executable in the git preferences at \"{GitPreferencesWindow.PROJECT_PREFERENCES_MENU}\"" +
+							$"Please install it or specify path to a valid \"git\" executable in the WiseGit preferences at \"{GitPreferencesWindow.PROJECT_PREFERENCES_MENU}\"\n" +
 							$"You can also disable permanently the git integration.";
 					} else {
 						displayMessage = $"Cannot find the \"git\" executable specified in the git preferences:\n\"{userPath}\"\n\n" +
