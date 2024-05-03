@@ -332,6 +332,37 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 
 		public void CheckGitSupport()
 		{
+#if UNITY_EDITOR_OSX
+			// The terminal runs with PATH environment variable that has more paths included than Unity (or any GUI app).
+			// It reads additional paths from '/etc/paths' and '/etc/paths.d' and any user profile at ~.
+			// Read more here: https://forum.unity.com/threads/modifing-path-variable-in-macos-for-unity.500616/#post-9810975
+			//
+			// Unity PATH variable by default: /usr/bin:/bin:/usr/sbin:/sbin
+			// Homebrew spits out binaries at '/usr/local/bin' for Intel or '/opt/homebrew/bin' for ARM.
+			// MacPorts spits out binaries at '/opt/local/bin' (not tested).
+			// Add all these paths.
+			//
+			// This also fixes the issue with git not finding git-lfs executable
+			// (which can be added by homebrew or installed manually at '/usr/local/bin' from https://git-lfs.com)
+			// So we don't have to link it like those guys: https://github.com/sublimehq/sublime_merge/issues/1438#issuecomment-1621436375
+			string pathEnvVariable = Environment.GetEnvironmentVariable("PATH");
+
+			if (!pathEnvVariable.Contains("/usr/local/bin")) {
+				pathEnvVariable += ":/usr/local/bin";
+				Environment.SetEnvironmentVariable("PATH", pathEnvVariable);
+			}
+
+			if (!pathEnvVariable.Contains("/opt/homebrew/bin")) {
+				pathEnvVariable += ":/opt/homebrew/bin";
+				Environment.SetEnvironmentVariable("PATH", pathEnvVariable);
+			}
+
+			if (!pathEnvVariable.Contains("/opt/local/bin")) {
+				pathEnvVariable += ":/opt/local/bin";
+				Environment.SetEnvironmentVariable("PATH", pathEnvVariable);
+			}
+#endif
+
 			string gitError;
 			try {
 				gitError = WiseGitIntegration.CheckForGitErrors();
@@ -373,21 +404,9 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 						"/Applications/Xcode.app/Contents/Developer/usr/bin/git",
 						"/Applications/Xcode.app/Contents/Developer/usr/libexec/git-core",
 						"/opt/local/bin/git",
+						"/opt/homebrew/bin/git",
 
-						//
-						// SnailGit comes with bundled up git binaries. Use those if needed, starting with the higher version. Premium and free.
-						// DON'T USE IT as it doesn't support LFS, check the preferences.
-						//
-						/*
-						// Arm64
-						"/Applications/SnailGit.app/Contents/PlugIns/SnailGitExtension.appex/Contents/XPCServices/SnailGitCache.xpc/Contents/Resources/git/arm64/bin/git",
-						"/Applications/SnailGitLite.app/Contents/PlugIns/SnailGitFreeExtension.appex/Contents/XPCServices/SnailGitFreeCache.xpc/Contents/Resources/git/arm64/bin/git",
-
-						// Intel x64
-						"/Applications/SnailGit.app/Contents/PlugIns/SnailGitExtension.appex/Contents/XPCServices/SnailGitCache.xpc/Contents/Resources/git/x86_64/bin/git",
-
-						"/Applications/SnailGitLite.app/Contents/PlugIns/SnailGitFreeExtension.appex/Contents/XPCServices/SnailGitFreeCache.xpc/Contents/Resources/git/x86_64/bin/git",
-						*/
+						// SnailGit comes with bundled up git binaries. Don't use them as they don't support LFS.
 					};
 
 					foreach(string osxPath in osxDefaultBinariesPaths) {
@@ -399,7 +418,7 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 						try {
 							string secondGitError = WiseGitIntegration.CheckForGitErrors();
 							// Exclude "not a working copy". Check below.
-							if (!string.IsNullOrEmpty(secondSvnError) && !secondSvnError.Contains("fatal: not a git repository"))
+							if (!string.IsNullOrEmpty(secondGitError) && !secondGitError.Contains("fatal: not a git repository"))
 								continue;
 
 							PersonalPrefs.EnableCoreIntegration = true;	// Save this enabled!
@@ -421,7 +440,7 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 
 				WiseGitIntegration.LogStatusErrorHint(StatusOperationResult.ExecutableNotFound, $"\nTemporarily disabling WiseGit integration. Please fix the error and restart Unity.\n\n{gitError}");
 #if UNITY_EDITOR_OSX
-				Debug.LogError($"Git can be installed with the \"Standalone command line developer tools\" by executing this 'xcode-select --install' in the terminal. You also need to install the LFS (Large File Support) extension separately from https://git-lfs.com");
+				Debug.LogError($"Git can be installed with the \"Standalone command line developer tools\" by executing this 'xcode-select --install' in the terminal. You also need to install the LFS (Large File Support) extension separately from https://git-lfs.com\nPATH={Environment.GetEnvironmentVariable("PATH")}");
 #endif
 				return;
 			}

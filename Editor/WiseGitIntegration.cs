@@ -1827,11 +1827,12 @@ namespace DevLocker.VersionControl.WiseGit
 #if UNITY_EDITOR_OSX
 					// LFS installed but Unity doesn't find it: https://github.com/sublimehq/sublime_merge/issues/1438#issuecomment-1621436375
 					// Also this: https://medium.com/@harendraprasadtest/jenkins-does-not-recognise-git-lfs-on-mac-error-git-lfs-is-not-a-git-command-9bfbda030c3e
-					displayMessage += "\nIf LFS is installed, but you still get this error it means 'git-lfs' executable is not in the same directory as the 'git' executable\n" +
-                        "Run 'git --exec-path' and 'where git-lfs' in the terminal to see their locations.\n" +
-                        "Run this to make a git-lfs link at the git location:\n" +
-						"> sudo ln -s \"$(which git-lfs)\" \"$(git --exec-path)/git-lfs\"\n" +
-						"If this doesn't work try copying it instead of making a link, but remember to update it with the original.";
+					// DEPRECATED: needed locations are now added to the PATH environment variable at CheckGitSupport().
+					//displayMessage += "\nIf LFS is installed, but you still get this error it means 'git-lfs' executable is not in the same directory as the 'git' executable\n" +
+					//    "Run 'git --exec-path' and 'where git-lfs' in the terminal to see their locations.\n" +
+					//    "Run this to make a git-lfs link at the git location:\n" +
+					//	"> sudo ln -s \"$(which git-lfs)\" \"$(git --exec-path)/git-lfs\"\n" +
+					//	"If this doesn't work try copying it instead of making a link, but remember to update it with the original.";
 #endif
 					break;
 
