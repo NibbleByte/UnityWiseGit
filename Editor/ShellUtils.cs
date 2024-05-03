@@ -385,13 +385,13 @@ namespace DevLocker.VersionControl.WiseGit.Shell
 			workingDirectory = workingDirectory ?? ".";
 			string scriptPath = $"{workingDirectory}/.Prompt_Command.sh";
 			string scriptContents = $"clear\n" +
-                $"echo \"\n{command} {args}\n{hint}\"\n" +
-                $"cd {workingDirectory}\n" +
-                $"{command} {args}"
+				$"echo \"\n{command} {args.Replace("\"","\\\"")}\n{hint}\"\n" +
+				$"cd \"{workingDirectory}\"\n" +
+				$"{command} {args}"
 				;
 			File.WriteAllText(scriptPath, scriptContents);
-			Process.Start("chmod", $"+x {scriptPath}");	 // Must be executable.
-			Process process = Process.Start("/System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal", scriptPath);
+			Process.Start("chmod", $"+x \"{scriptPath}\"");	 // Must be executable.
+			Process process = Process.Start("/System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal", $"\"{scriptPath}\"");
 
 			// Waiting for terminal to close doesn't work - script finishes, but terminal remains open, which may be confusing for the user.
 			Thread.Sleep(1000);
