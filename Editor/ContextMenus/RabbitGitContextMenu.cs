@@ -129,7 +129,12 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 			if (string.IsNullOrEmpty(pathsArg))
 				return;
 
-			var result = ShellUtils.ExecuteCommand(ClientCommand, $"revert {pathsArg}", wait);
+			//var result = ShellUtils.ExecuteCommand(ClientCommand, $"reset \"{WiseGitIntegration.ProjectRootNative}\"", wait);
+			//if (MayHaveRabbitVCSError(result.Error)) {
+			//	Debug.LogError($"Git Error: {result.Error}");
+			//}
+
+			var result = ShellUtils.ExecuteCommand(ClientCommand, $"checkout --vcs=git {pathsArg}", wait);
 			if (MayHaveRabbitVCSError(result.Error)) {
 				Debug.LogError($"Git Error: {result.Error}");
 			}
