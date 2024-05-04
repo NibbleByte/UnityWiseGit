@@ -1518,11 +1518,11 @@ namespace DevLocker.VersionControl.WiseGit
 
 		internal static void PromptForAuth(string path)
 		{
-			string hint = "\nNOTE: You may need to enter your Personal Access Token as your password.\n      Check with your provider.\n";
+			string hint = "\nNOTE: You may need to enter your Personal Access Token as your password.\n      Check with your provider.\n\n      If git keeps asking for password, try running this once:\n      'git config --global credential.helper store'\n\n";
 
 			ShellUtils.ExecutePrompt(Git_Command, $"lfs locks", path, hint);
 
-#if UNITY_EDITOR_OSX
+#if !UNITY_EDITOR_WIN
 			// Interact with the user since we don't know when the terminal will close.
 			EditorUtility.DisplayDialog("Git Authenticate", "A terminal window was open. When you authenticated in the terminal window, press \"Ready\".", "Ready");
 #endif

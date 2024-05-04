@@ -3,6 +3,7 @@
 using DevLocker.VersionControl.WiseGit.Shell;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 using System;
 using UnityEngine;
 
@@ -47,7 +48,8 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 
 		public override void Pull(bool wait = false)
 		{
-			var result = ShellUtils.ExecuteCommand(ClientCommand, $"pull {WiseGitIntegration.ProjectRootNative}", wait);
+			// No pull, it's called update.
+			var result = ShellUtils.ExecuteCommand(ClientCommand, $"update {WiseGitIntegration.ProjectRootNative}", wait);
 			if (MayHaveRabbitVCSError(result.Error)) {
 				Debug.LogError($"Git Error: {result.Error}");
 			}
@@ -63,7 +65,8 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 
 		public override void Fetch(bool wait = false)
 		{
-			var result = ShellUtils.ExecuteCommand(ClientCommand, $"fetch {WiseGitIntegration.ProjectRootNative}", wait);
+			// No fetch, update is pull, with option to merge.
+			var result = ShellUtils.ExecuteCommand(ClientCommand, $"update {WiseGitIntegration.ProjectRootNative}", wait);
 			if (MayHaveRabbitVCSError(result.Error)) {
 				Debug.LogError($"Git Error: {result.Error}");
 			}
@@ -147,13 +150,19 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 			if (!assetPaths.Any())
 				return;
 
-			string pathsArg = AssetPathsToContextPaths(assetPaths, includeMeta);
-			if (string.IsNullOrEmpty(pathsArg))
+			if (assetPaths.Any(Directory.Exists)) {
+				UnityEditor.EditorUtility.DisplayDialog("Cannot Lock Directories", "Directory locking is not supported. Please select specific files instead.", "Ok");
 				return;
+			}
 
-			var result = ShellUtils.ExecuteCommand(ClientCommand, $"lock {pathsArg}", wait);
-			if (MayHaveRabbitVCSError(result.Error)) {
-				Debug.LogError($"Git Error: {result.Error}");
+			// Doesn't support locks (doesn't seem to have such a window?)
+			using (var reporter = new WiseGitIntegration.ResultConsoleReporter(true, WiseGitIntegration.Silent, "SnailGitContextMenus Operations:")) {
+				var result = WiseGitIntegration.LockFiles(assetPaths, false, WiseGitIntegration.ONLINE_COMMAND_TIMEOUT, reporter);
+				if (result != LockOperationResult.Success) {
+					Debug.LogError($"Git Error: {result}");
+				} else {
+					GitStatusesDatabase.Instance.InvalidateDatabase();
+				}
 			}
 		}
 
@@ -162,13 +171,19 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 			if (!assetPaths.Any())
 				return;
 
-			string pathsArg = AssetPathsToContextPaths(assetPaths, includeMeta);
-			if (string.IsNullOrEmpty(pathsArg))
+			if (assetPaths.Any(Directory.Exists)) {
+				UnityEditor.EditorUtility.DisplayDialog("Cannot Lock Directories", "Directory locking is not supported. Please select specific files instead.", "Ok");
 				return;
+			}
 
-			var result = ShellUtils.ExecuteCommand(ClientCommand, $"unlock {pathsArg}", wait);
-			if (MayHaveRabbitVCSError(result.Error)) {
-				Debug.LogError($"Git Error: {result.Error}");
+			// Doesn't support locks (doesn't seem to have such a window?)
+			using (var reporter = new WiseGitIntegration.ResultConsoleReporter(true, WiseGitIntegration.Silent, "SnailGitContextMenus Operations:")) {
+				var result = WiseGitIntegration.UnlockFiles(assetPaths, false, WiseGitIntegration.ONLINE_COMMAND_TIMEOUT, reporter);
+				if (result != LockOperationResult.Success) {
+					Debug.LogError($"Git Error: {result}");
+				} else {
+					GitStatusesDatabase.Instance.InvalidateDatabase();
+				}
 			}
 		}
 
@@ -189,12 +204,22 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 
 		public override void Blame(string assetPath, bool wait = false)
 		{
-			UnityEditor.EditorUtility.DisplayDialog("Not Supported", "RabbitVCS does not support Blame function yet.", "OK");
+			if (string.IsNullOrEmpty(assetPath))
+				return;
+
+			string pathsArg = AssetPathToContextPaths(assetPath, false);
+			if (string.IsNullOrEmpty(pathsArg))
+				return;
+
+			var result = ShellUtils.ExecuteCommand(ClientCommand, $"annotate {pathsArg}", wait);
+			if (MayHaveRabbitVCSError(result.Error)) {
+				Debug.LogError($"Git Error: {result.Error}");
+			}
 		}
 
 		public override void Cleanup(bool wait = false)
 		{
-			var result = ShellUtils.ExecuteCommand(ClientCommand, $"cleanup \"{WiseGitIntegration.ProjectRootNative}\"", wait);
+			var result = ShellUtils.ExecuteCommand(ClientCommand, $"clean \"{WiseGitIntegration.ProjectRootNative}\"", wait);
 			if (MayHaveRabbitVCSError(result.Error)) {
 				Debug.LogError($"Git Error: {result.Error}");
 			}
@@ -213,7 +238,7 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 
 		public override void Switch(bool wait = false)
 		{
-			var result = ShellUtils.ExecuteCommand(ClientCommand, $"switch", wait);
+			var result = ShellUtils.ExecuteCommand(ClientCommand, $"branches", wait);
 			if (MayHaveRabbitVCSError(result.Error)) {
 				Debug.LogError($"Git Error: {result.Error}");
 			}

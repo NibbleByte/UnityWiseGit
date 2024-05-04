@@ -224,7 +224,7 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 #elif UNITY_EDITOR_OSX
 				PersonalPrefs.ContextMenusClient = ContextMenusClient.SnailGit;
 #else
-				PersonalPrefs.ContextMenusClient = ContextMenusClient.CLI;
+				PersonalPrefs.ContextMenusClient = ContextMenusClient.RabbitVCS;
 #endif
 			}
 
