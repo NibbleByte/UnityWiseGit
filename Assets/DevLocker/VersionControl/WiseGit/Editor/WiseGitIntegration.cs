@@ -181,6 +181,8 @@ namespace DevLocker.VersionControl.WiseGit
 		// Used to track the shell commands output for errors and log them on Dispose().
 		public class ResultConsoleReporter : IShellMonitor, IDisposable
 		{
+			public bool HasErrors => m_HasErrors;
+
 			private readonly ConcurrentQueue<string> m_CombinedOutput = new ConcurrentQueue<string>();
 
 			private bool m_HasErrors = false;
@@ -1754,6 +1756,18 @@ namespace DevLocker.VersionControl.WiseGit
 				var result = ShellUtils.ExecuteCommand(Git_Command, $"mv \"{GitFormatPath(oldPath)}\" \"{newPath}\"", COMMAND_TIMEOUT, reporter);
 				if (result.HasErrors) {
 
+					// fatal: source directory is empty, source=..., destination=...
+					// Empty "versioned" folders (i.e. it's meta file) returns this error, which is fine - move the folder normally and move the meta with git.
+					if (result.Error.Contains("fatal: source directory is empty")) {
+						try {
+							Directory.Move(oldPath, newPath);
+							reporter.ResetErrorFlag();	// Recover and continue doing the meta file.
+
+						} catch (Exception e) {
+							reporter.AppendErrorLine($"Failed to move directory with exception: {e}");
+						}
+					}
+
 					// Moving files from one repository to another is not allowed (nested checkouts or externals).
 					//svn: E155023: Cannot copy to '...', as it is not from repository '...'; it is from '...'
 					// TODO: Nested repositories support is missing?
@@ -1780,7 +1794,10 @@ namespace DevLocker.VersionControl.WiseGit
 					}
 					*/
 
-					return AssetMoveResult.FailedMove;
+					// Check if we recovered from the error.
+					if (reporter.HasErrors) {
+						return AssetMoveResult.FailedMove;
+					}
 				}
 
 				result = ShellUtils.ExecuteCommand(Git_Command, $"mv \"{GitFormatPath(oldPath + ".meta")}\" \"{newPath}.meta\"", COMMAND_TIMEOUT, reporter);
