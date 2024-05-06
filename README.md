@@ -6,7 +6,7 @@ Simple but powerful git integration for Unity 3D utilizing [TortoiseGit](https:/
 
 !!!TODO!!! Assets Store | Unity Forum
 
-!!!TODO!!! openupm
+[![openupm](https://img.shields.io/npm/v/devlocker.versioncontrol.wisegit?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/devlocker.versioncontrol.wisegit/)
 
 ## Table of Contents
 [Features](#features)<br />
@@ -57,7 +57,7 @@ This is an issue with how Unity works, not the plugin iteself. Unity says its by
 ## Installation
 !!!TODO!!!
 * Asset Store plugin: ...
-* [OpenUPM](https://openupm.com/packages/devlocker.versioncontrol.wisesvn) support:
+* [OpenUPM](https://openupm.com/packages/devlocker.versioncontrol.wisegit) support:
 ```
 npm install -g openupm-cli
 openupm add devlocker.versioncontrol.wisegit
@@ -75,7 +75,7 @@ openupm add devlocker.versioncontrol.wisegit
         }
     ],
     "dependencies": {
-        "devlocker.versioncontrol.wisegit": "1.4.XXXXX"
+        "devlocker.versioncontrol.wisegit": "1.0.XXXXX"
     }
 }
 ```

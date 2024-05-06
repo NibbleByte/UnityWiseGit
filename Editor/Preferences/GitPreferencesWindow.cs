@@ -418,7 +418,7 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 				GUILayout.Label("|", GUILayout.ExpandWidth(false));
 
 				if (GUILayout.Button("OpenUPM", urlStyle, GUILayout.ExpandWidth(false))) {
-					var openUPMurl = "https://openupm.com/packages/TODO:SET_URL_WHEN_AVAILABLE";
+					var openUPMurl = "https://openupm.com/packages/devlocker.versioncontrol.wisegit/";
 					Application.OpenURL(openUPMurl);
 				}
 
