@@ -106,12 +106,12 @@ openupm add devlocker.versioncontrol.wisegit
 * Server has changes, update <img src="./Assets/DevLocker/VersionControl/WiseGit/Editor/Resources/GitOverlayIcons/Others/Git_RemoteChanges_Icon.png" width="16">
 
 ## Screenshots
-![OverlayIcons1](Docs/Screenshots/WiseSVN-OverlayIcons-Shot.png)
-![OverlayIcons2](Docs/Screenshots/WiseSVN-OverlayIcons2-Shot.png)
+![OverlayIcons1](Docs/Screenshots/WiseGit-OverlayIcons-Shot.png)
+![OverlayIcons2](Docs/Screenshots/WiseGit-OverlayIcons2-Shot.png)
 
-![ContextMenu](Docs/Screenshots/WiseSVN-ContextMenu-Shot.png)
-![File Operations](Docs/Screenshots/WiseSVN-Rename-Shot.png)
-![Preferences](Docs/Screenshots/WiseSVN-Preferences-Shot.png)
+![ContextMenu](Docs/Screenshots/WiseGit-ContextMenu-Shot.png)
+![File Operations](Docs/Screenshots/WiseGit-Rename-Shot.png)
+![Preferences](Docs/Screenshots/WiseGit-Preferences-Shot.png)
 
-![Lock Prompt](Docs/Screenshots/WiseSVN-Lock-Prompt.png)
-![Locked Scene Warning](Docs/Screenshots/WiseSVN-Locked-Scene-Warning.png)
+![Lock Prompt](Docs/Screenshots/WiseGit-Lock-Prompt.png)
+![Locked Scene Warning](Docs/Screenshots/WiseGit-Locked-Scene-Warning.png)
