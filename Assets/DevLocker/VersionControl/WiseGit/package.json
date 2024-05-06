@@ -3,7 +3,7 @@
     "displayName": "WiseGit",
     "version": "1.0.0",
     "unity": "2022.3",
-    "description": "Simple but powerful Git integration.\nHooks up to Unity move and delete file operations and executes respective git commands to stay in sync. Handles meta files as well.\nMoving assets to unversioned folder will ask the user to add that folder meta to git as well.\nMoving folders / files that have conflicts will be rejected.\nWill work with other tools as long as they move assets using Unity API.\nProvides assets context menu for manual git operations like commit, update, revert etc.\n\nPrerequisites:\n - git CLI (Command Line Interface) needs to be installed (TortoiseGit has it available).\n - Menu items work with TortoiseGit (for Windows), SnailGit (for MacOS) or RabbitVCS (for Linux) clients.\n\nUsage: \"Assets/Git/...\".\n\nWARNING: Never focus Unity while the project updating in the background. Newly added asset guids may get corrupted in which case the Library folder needs to be deleted.\nPreferred workflow is to always work inside Unity - use the \"Assets/Git/...\" menus. \"Assets/Git/Update All\" will block Unity while updating, to avoid Unity processing assets at the same time.",
+    "description": "Simple but powerful Git integration. Provides you with git context menus, overlay icons and takes care of moved or deleted files.",
 	"category": "VersionControl",
     "keywords": [
         "git",

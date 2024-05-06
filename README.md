@@ -4,9 +4,9 @@
 
 Simple but powerful git integration for Unity 3D utilizing [TortoiseGit](https://tortoisegit.org/) (for Windows), [SnailGit](https://langui.net/snailgit) (for MacOS) or [RabbitVCS](http://rabbitvcs.org/) (for Linux) user interface. A must have plugin if you use git as your version control system in your project.
 
-!!!TODO!!! [Assets Store](https://assetstore.unity.com/packages/tools/version-control/wise-svn-162636) | [Unity Forum](https://forum.unity.com/threads/wise-svn-powerful-tortoisesvn-snailsvn-integration.844168/) | [Reddit](https://www.reddit.com/r/Unity3D/comments/fgjovk/finally_a_fully_working_tortoisesvn_snailsvn/)
+!!!TODO!!! Assets Store | Unity Forum
 
-!!!TODO!!! [![openupm](https://img.shields.io/npm/v/devlocker.versioncontrol.wisesvn?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/devlocker.versioncontrol.wisesvn/)
+!!!TODO!!! openupm
 
 ## Table of Contents
 [Features](#features)<br />
@@ -18,14 +18,14 @@ Simple but powerful git integration for Unity 3D utilizing [TortoiseGit](https:/
 ## Features
 * **Hooks up to Unity move and delete file operations and executes respective git commands to stay in sync.**
   * **Handles meta files as well.**
-  * Moving assets to unversioned folder will ask the user to add that folder metas to git as well.
+  * Moving assets to unversioned folder will ask the user to add that folder meta to git as well.
   * Moving folders / files that have conflicts will be rejected.
   * Will work with other custom tools as long as they move / rename assets using Unity API.
-* Provides assets context menu for manual git operations like commit, update, revert etc.
+* Provides assets context menu for manual git operations like commit, push, pull, revert etc.
 * **Show overlay git status icons**
-  * Show server changes that you need to pull.
-  * Show locked files by you and your colleges.
-  * Show ignore icons for matches in .gitignore.
+  * Show server changes that you need to merge (works by regularly fetching remote changes).
+  * Show locked files by you and your colleges (works via LFS locks).
+  * Show ignored icons (by ".gitignore").
 * Displays warning in the SceneView when the current scene or edited prefab is out of date or locked.
 * Lock prompt on modifying assets by path and type (perforce checkout like)
   * If asset or its meta becomes modified a pop-up window will prompt the user to lock or ignore it.
@@ -51,12 +51,12 @@ Do your file operations in Unity and the plugin will handle the rest.
 User git operations are available in the menu (or right-click on any asset): `Assets/Git/...`
 
 **WARNING: Never focus Unity while the project is updating in the background. Newly added asset guids may get corrupted in which case the Library folder needs to be deleted. <br />
-Preferred workflow is to always work inside Unity - use the \"Assets/Git/...\" menus. \"Assets/Git/Update All\" will block Unity while updating, to avoid Unity processing assets at the same time. <br />
+Preferred workflow is to always work inside Unity - use the \"Assets/Git/...\" menus. \"Assets/Git/Pull All\" will block Unity while updating, to avoid Unity processing assets at the same time. <br />
 This is an issue with how Unity works, not the plugin iteself. Unity says its by "design".**
 
 ## Installation
 !!!TODO!!!
-* Asset Store plugin: https://assetstore.unity.com/packages/tools/version-control/wise-svn-162636
+* Asset Store plugin: ...
 * [OpenUPM](https://openupm.com/packages/devlocker.versioncontrol.wisesvn) support:
 ```
 npm install -g openupm-cli
@@ -90,22 +90,22 @@ openupm add devlocker.versioncontrol.wisegit
 #### Prerequisites
 * You need to have git 2.43.0 or higher installed with LFS support (used for locking).
 * You need to have [TortoiseGit](https://tortoisegit.org/) (for Windows), [SnailGit](https://langui.net/snailgit) (for MacOS) or [RabbitVCS](http://rabbitvcs.org) (for Linux) installed.
+* Test if git works by typing "git version" in the command line / terminal
 
 
 
 
 ## Overlay Icons
-* Unversioned <img src="./Assets/DevLocker/VersionControl/WiseGit/Resources/Editor/GitOverlayIcons/Git_Unversioned_Icon.png" width="16">
-* Modified <img src="./Assets/DevLocker/VersionControl/WiseGit/Resources/Editor/GitOverlayIcons/Git_Modified_Icon.png" width="16">
-* Added <img src="./Assets/DevLocker/VersionControl/WiseGit/Resources/Editor/GitOverlayIcons/Git_Added_Icon.png" width="16">
-* Deleted <img src="./Assets/DevLocker/VersionControl/WiseGit/Resources/Editor/GitOverlayIcons/Git_Deleted_Icon.png" width="16">
-* Conflict <img src="./Assets/DevLocker/VersionControl/WiseGit/Resources/Editor/GitOverlayIcons/Git_Conflict_Icon.png" width="16">
-* Locked by me <img src="./Assets/DevLocker/VersionControl/WiseGit/Resources/Editor/GitOverlayIcons/Locks/Git_LockedHere_Icon.png" width="16">
-* Locked by others <img src="./Assets/DevLocker/VersionControl/WiseGit/Resources/Editor/GitOverlayIcons/Locks/Git_LockedOther_Icon.png" width="16">
-* Server has changes, update <img src="./Assets/DevLocker/VersionControl/WiseGit/Resources/Editor/GitOverlayIcons/Others/Git_RemoteChanges_Icon.png" width="16">
+* Unversioned <img src="./Assets/DevLocker/VersionControl/WiseGit/Editor/Resources/GitOverlayIcons/Git_Unversioned_Icon.png" width="16">
+* Modified <img src="./Assets/DevLocker/VersionControl/WiseGit/Editor/Resources/GitOverlayIcons/Git_Modified_Icon.png" width="16">
+* Added <img src="./Assets/DevLocker/VersionControl/WiseGit/Editor/Resources/GitOverlayIcons/Git_Added_Icon.png" width="16">
+* Deleted <img src="./Assets/DevLocker/VersionControl/WiseGit/Editor/Resources/GitOverlayIcons/Git_Deleted_Icon.png" width="16">
+* Conflict <img src="./Assets/DevLocker/VersionControl/WiseGit/Editor/Resources/GitOverlayIcons/Git_Conflict_Icon.png" width="16">
+* Locked by me <img src="./Assets/DevLocker/VersionControl/WiseGit/Editor/Resources/GitOverlayIcons/Locks/Git_LockedHere_Icon.png" width="16">
+* Locked by others <img src="./Assets/DevLocker/VersionControl/WiseGit/Editor/Resources/GitOverlayIcons/Locks/Git_LockedOther_Icon.png" width="16">
+* Server has changes, update <img src="./Assets/DevLocker/VersionControl/WiseGit/Editor/Resources/GitOverlayIcons/Others/Git_RemoteChanges_Icon.png" width="16">
 
 ## Screenshots
-!!!TODO!!!
 ![OverlayIcons1](Docs/Screenshots/WiseSVN-OverlayIcons-Shot.png)
 ![OverlayIcons2](Docs/Screenshots/WiseSVN-OverlayIcons2-Shot.png)
 

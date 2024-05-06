@@ -417,13 +417,6 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 
 				GUILayout.Label("|", GUILayout.ExpandWidth(false));
 
-				if (GUILayout.Button("Reddit", urlStyle, GUILayout.ExpandWidth(false))) {
-					var redditURL = "https://www.reddit.com/r/Unity3D/comments/fgjovk/TODO:SET_URL_WHEN_AVAILABLE";
-					Application.OpenURL(redditURL);
-				}
-
-				GUILayout.Label("|", GUILayout.ExpandWidth(false));
-
 				if (GUILayout.Button("OpenUPM", urlStyle, GUILayout.ExpandWidth(false))) {
 					var openUPMurl = "https://openupm.com/packages/TODO:SET_URL_WHEN_AVAILABLE";
 					Application.OpenURL(openUPMurl);
