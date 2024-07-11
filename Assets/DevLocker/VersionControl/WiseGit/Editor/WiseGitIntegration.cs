@@ -176,6 +176,8 @@ namespace DevLocker.VersionControl.WiseGit
 
 		private static System.Threading.Thread m_MainThread;
 
+		private static volatile bool m_IsApplicationQuitting;
+
 		#region Logging
 
 		// Used to track the shell commands output for errors and log them on Dispose().
@@ -296,6 +298,8 @@ namespace DevLocker.VersionControl.WiseGit
 			ProjectRootUnity = ProjectRootNative.Replace('\\', '/');
 
 			m_MainThread = System.Threading.Thread.CurrentThread;
+
+			EditorApplication.quitting += () => m_IsApplicationQuitting = true;
 		}
 
 		/// <summary>
@@ -386,7 +390,8 @@ namespace DevLocker.VersionControl.WiseGit
 					return ParseCommonStatusError(result.Error);
 				}
 
-				// TODO: This crashesh the editor on exit when called form a background thread. Callstack:
+
+				// This crashesh the editor on exit when called form a background thread. This is why we kill it on quit. Callstack:
 				// TcpMessagingSession - receive error: operation aborted. errorcode: 995, details: The I/ O operation has been aborted because of either a thread exit or an application request.
 				// TcpMessagingSession - receive error: operation aborted. errorcode: 995, details: The I/ O operation has been aborted because of either a thread exit or an application request.
 				// Cleanup mono
@@ -407,6 +412,9 @@ namespace DevLocker.VersionControl.WiseGit
 				// (Mono JIT Code) UnityEngine.JsonUtility:FromJson(string, System.Type)
 				// (Mono JIT Code) UnityEngine.JsonUtility:FromJson < DevLocker.VersionControl.WiseGit.WiseGitIntegration / LocksJSONEntry > (string)
 				// (Mono JIT Code)[...\Editor\WiseGitIntegration.cs:387] DevLocker.VersionControl.WiseGit.WiseGitIntegration:GetStatuses(...)
+				if (m_IsApplicationQuitting)
+					return StatusOperationResult.UnknownError;
+
 				locksJSONEntry = JsonUtility.FromJson<LocksJSONEntry>(result.Output);
 				locksJSONEntry.ExcludeOutsidePaths(path);
 			}
