@@ -397,7 +397,7 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 				EditorGUILayout.BeginHorizontal();
 
 				if (GUILayout.Button("Asset Store", urlStyle, GUILayout.ExpandWidth(false))) {
-					var assetStoreURL = "https://assetstore.unity.com/packages/tools/version-control/TODO:SET_URL_WHEN_AVAILABLE";
+					var assetStoreURL = "https://assetstore.unity.com/packages/tools/version-control/wise-integration-with-git-284277";
 					Application.OpenURL(assetStoreURL);
 				}
 
@@ -411,7 +411,7 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 				GUILayout.Label("|", GUILayout.ExpandWidth(false));
 
 				if (GUILayout.Button("Unity Forum", urlStyle, GUILayout.ExpandWidth(false))) {
-					var unityForumURL = "https://forum.unity.com/threads/TODO:SET_URL_WHEN_AVAILABLE";
+					var unityForumURL = "https://discussions.unity.com/t/wise-git-powerful-tortoisegit-snailgit-integration/949659";
 					Application.OpenURL(unityForumURL);
 				}
 
