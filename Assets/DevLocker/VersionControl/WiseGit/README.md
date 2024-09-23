@@ -4,7 +4,7 @@
 
 Simple but powerful git integration for Unity 3D utilizing [TortoiseGit](https://tortoisegit.org/) (for Windows), [SnailGit](https://langui.net/snailgit) (for MacOS) or [RabbitVCS](http://rabbitvcs.org/) (for Linux) user interface. A must have plugin if you use git as your version control system in your project.
 
-!!!TODO!!! Assets Store | Unity Forum
+[Assets Store](https://assetstore.unity.com/packages/slug/284277) | [Unity Forum](https://forum.unity.com/threads/wise-git-powerful-tortoisegit-snailgit-integration.1601628/)
 
 [![openupm](https://img.shields.io/npm/v/devlocker.versioncontrol.wisegit?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/devlocker.versioncontrol.wisegit/)
 
@@ -55,8 +55,7 @@ Preferred workflow is to always work inside Unity - use the \"Assets/Git/...\" m
 This is an issue with how Unity works, not the plugin iteself. Unity says its by "design".**
 
 ## Installation
-!!!TODO!!!
-* Asset Store plugin: ...
+* [Asset Store](https://u3d.as/3hC0)
 * [OpenUPM](https://openupm.com/packages/devlocker.versioncontrol.wisegit) support:
 ```
 npm install -g openupm-cli
@@ -89,7 +88,7 @@ openupm add devlocker.versioncontrol.wisegit
 
 #### Prerequisites
 * You need to have git 2.43.0 or higher installed with LFS support (used for locking).
-* You need to have [TortoiseGit](https://tortoisegit.org/) (for Windows), [SnailGit](https://langui.net/snailgit) (for MacOS) or [RabbitVCS](http://rabbitvcs.org) (for Linux) installed.
+* It is recommended to have [TortoiseGit](https://tortoisegit.org/) (for Windows), [SnailGit](https://langui.net/snailgit) (for MacOS) or [RabbitVCS](http://rabbitvcs.org) (for Linux) installed, so the context menus work.
 * Test if git works by typing "git version" in the command line / terminal
 
 
