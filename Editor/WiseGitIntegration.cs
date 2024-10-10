@@ -1444,6 +1444,10 @@ namespace DevLocker.VersionControl.WiseGit
 				yield break;
 			}
 
+			if (string.IsNullOrWhiteSpace(result.Output)) {
+				yield break;
+			}
+
 			var output = result.Output.Replace("\r", "");
 			foreach(string line in output.Split('\n')) {
 				// NOTE that first character can be space, -, +, or U.
