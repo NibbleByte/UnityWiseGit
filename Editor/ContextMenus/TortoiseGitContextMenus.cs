@@ -49,6 +49,9 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 			// Cancel produces error code -1. Ignore.
 			if (result.HasErrors && result.ErrorCode != -1) {
 				Debug.LogError($"Git Error: {result.Error}");
+
+			} else if (result.ErrorCode != -1 && WiseGitIntegration.ListAllSubmodulePaths().Any()) {
+				SubmodulesUpdate(wait);
 			}
 		}
 
@@ -73,6 +76,15 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 		public override void Push(bool wait = false)
 		{
 			var result = ShellUtils.ExecuteCommand(ClientCommand, $"/command:push /path:\"{WiseGitIntegration.ProjectRootNative}\"", wait);
+			// Cancel produces error code -1. Ignore.
+			if (result.HasErrors && result.ErrorCode != -1) {
+				Debug.LogError($"Git Error: {result.Error}");
+			}
+		}
+
+		public override void SubmodulesUpdate(bool wait = false)
+		{
+			var result = ShellUtils.ExecuteCommand(ClientCommand, $"/command:subupdate /bkpath:\"{WiseGitIntegration.ProjectRootNative}\"", wait);
 			// Cancel produces error code -1. Ignore.
 			if (result.HasErrors && result.ErrorCode != -1) {
 				Debug.LogError($"Git Error: {result.Error}");
