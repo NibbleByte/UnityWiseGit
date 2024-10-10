@@ -176,6 +176,8 @@ namespace DevLocker.VersionControl.WiseGit
 
 		private static System.Threading.Thread m_MainThread;
 
+		private static List<string> m_SubmoduleRoots;
+
 		private static volatile bool m_IsApplicationQuitting;
 
 		#region Logging
@@ -300,6 +302,8 @@ namespace DevLocker.VersionControl.WiseGit
 			m_MainThread = System.Threading.Thread.CurrentThread;
 
 			EditorApplication.quitting += () => m_IsApplicationQuitting = true;
+
+			m_SubmoduleRoots = ListAllSubmodulePaths().ToList();
 		}
 
 		/// <summary>
@@ -419,23 +423,40 @@ namespace DevLocker.VersionControl.WiseGit
 				locksJSONEntry.ExcludeOutsidePaths(path);
 			}
 
-			result = ShellUtils.ExecuteCommand(Git_Command, $"status --porcelain -z \"{GitFormatPath(path)}\"", timeout, shellMonitor);
+			result = ExecuteCommand(path, $"status --porcelain -z \"{GitFormatPath(path)}\"", timeout, shellMonitor);
 
 			if (result.HasErrors) {
 				return ParseCommonStatusError(result.Error);
 			}
 
-			bool emptyOutput = string.IsNullOrWhiteSpace(result.Output);
-
 			// Empty result could also mean: file doesn't exist.
 			// Note: git-deleted files still have git status, so always check for status before files on disk.
-			if (emptyOutput) {
+			if (string.IsNullOrWhiteSpace(result.Output)) {
 				if (!File.Exists(path) && !Directory.Exists(path))
 					return StatusOperationResult.TargetPathNotFound;
 			}
 
+			if (!string.IsNullOrWhiteSpace(result.Output)) {
+				resultEntries.AddRange(ExtractStatuses(result.Output));
+			}
+
+			// Check submodules too.
+			{
+				// TODO: this doesn't check for remote changes or locks in submodules.
+
+				result = ShellUtils.ExecuteCommand(Git_Command, $"submodule foreach --recursive  {Git_Command} status --porcelain -z", timeout, shellMonitor);
+
+				if (result.HasErrors) {
+					return ParseCommonStatusError(result.Error);
+				}
+
+				if (!string.IsNullOrWhiteSpace(result.Output)) {
+					resultEntries.AddRange(ExtractStatuses(result.Output, pathFilter: path.Replace('\\', '/')));
+				}
+			}
+
 			// If no info is returned for path, the status is normal. Reflect this when searching for Empty depth.
-			if (emptyOutput) {
+			if (resultEntries.Count == 0) {
 				var ignoredPaths = GetIgnoredPaths(path, true);
 
 				// ... it may be empty because it is ignored.
@@ -447,8 +468,6 @@ namespace DevLocker.VersionControl.WiseGit
 				return StatusOperationResult.Success;
 			}
 
-			resultEntries.AddRange(ExtractStatuses(result.Output));
-
 			// NOTE: if file was marked as moved or deleted, and another unstaged file is present in the original location
 			//		 it will be returned as unknown status, after the moved/deleted status (i.e. 2 entries for the same file).
 			// Example:
@@ -459,7 +478,7 @@ namespace DevLocker.VersionControl.WiseGit
 			//   ?? README.md
 
 
-			for(int i = 0; i < resultEntries.Count; ++i) {
+			for (int i = 0; i < resultEntries.Count; ++i) {
 				GitStatusData statusData = resultEntries[i];
 
 				if (remoteChanges.Contains(statusData.Path, StringComparer.OrdinalIgnoreCase)) {
@@ -691,7 +710,7 @@ namespace DevLocker.VersionControl.WiseGit
 		{
 			string directoryArg = skipFilesInIgnoredDirectories ? "--directory" : "";
 
-			var result = ShellUtils.ExecuteCommand(Git_Command, $"ls-files -i -o --exclude-standard {directoryArg} -z \"{GitFormatPath(path)}\"", COMMAND_TIMEOUT);
+			var result = ExecuteCommand(path, $"ls-files -i -o --exclude-standard {directoryArg} -z \"{GitFormatPath(path)}\"", COMMAND_TIMEOUT);
 
 			// Happens for nested directory paths of ignored one, only when using --directory.
 			// fatal: git ls-files: internal error - directory entry not superset of prefix
@@ -750,7 +769,7 @@ namespace DevLocker.VersionControl.WiseGit
 			}
 
 			// Not sure if paths are truely pathspec with wildcards etc. But it does support list of paths.
-			var result = ShellUtils.ExecuteCommand(Git_Command, $"lfs lock {GitPathspecs(paths)}", timeout, shellMonitor);
+			var result = ExecuteCommand(paths.FirstOrDefault(), $"lfs lock {GitPathspecs(paths)}", timeout, shellMonitor);
 
 			if (result.HasErrors) {
 
@@ -822,7 +841,7 @@ namespace DevLocker.VersionControl.WiseGit
 			var forceArg = force ? "--force" : string.Empty;
 
 			// Not sure if paths are truely pathspec with wildcards etc. But it does support list of paths.
-			var result = ShellUtils.ExecuteCommand(Git_Command, $"lfs unlock {forceArg} {GitPathspecs(paths)}", timeout, shellMonitor);
+			var result = ExecuteCommand(paths.FirstOrDefault(), $"lfs unlock {forceArg} {GitPathspecs(paths)}", timeout, shellMonitor);
 
 			result.Error = FilterOutLines(result.Error,
 				// unable to get lock ID: no matching locks found
@@ -1088,7 +1107,7 @@ namespace DevLocker.VersionControl.WiseGit
 			var autoStageArg = autoStageModified ? "--all" : "";
 			string pathspecs = assetPaths != null ? GitPathspecs(assetPaths) : string.Empty;
 
-			var result = ShellUtils.ExecuteCommand(Git_Command, $"commit --message=\"{message}\" {autoStageArg} {pathspecs}", timeout, shellMonitor);
+			var result = ExecuteCommand(assetPaths.FirstOrDefault(), $"commit --message=\"{message}\" {autoStageArg} {pathspecs}", timeout, shellMonitor);
 			if (result.HasErrors) {
 
 				// no changes added to commit (use "git add" and/or "git commit -a")
@@ -1214,7 +1233,7 @@ namespace DevLocker.VersionControl.WiseGit
 
 			string pathspec = GitPathspecs(assetPathspecs);
 
-			var result = ShellUtils.ExecuteCommand(Git_Command, $"reset -q -- {pathspec}", timeout, shellMonitor);
+			var result = ExecuteCommand(assetPathspecs.FirstOrDefault(), $"reset -q -- {pathspec}", timeout, shellMonitor);
 			if (result.HasErrors) {
 
 				// Operation took too long, shell utils time out kicked in.
@@ -1225,7 +1244,7 @@ namespace DevLocker.VersionControl.WiseGit
 			}
 
 			if (checkoutAfterReset) {
-				result = ShellUtils.ExecuteCommand(Git_Command, $"checkout -q -- {pathspec}", timeout, shellMonitor);
+				result = ExecuteCommand(assetPathspecs.FirstOrDefault(), $"checkout -q -- {pathspec}", timeout, shellMonitor);
 				if (result.HasErrors) {
 
 					//error: pathspec '...' did not match any file(s) known to git
@@ -1274,7 +1293,7 @@ namespace DevLocker.VersionControl.WiseGit
 			if (statusData.IsConflicted)
 				return false;
 
-			var result = ShellUtils.ExecuteCommand(Git_Command, $"add --force \"{GitFormatPath(path)}\"", COMMAND_TIMEOUT, shellMonitor);
+			var result = ExecuteCommand(path, $"add --force \"{GitFormatPath(path)}\"", COMMAND_TIMEOUT, shellMonitor);
 			if (result.HasErrors)
 				return false;
 
@@ -1285,7 +1304,7 @@ namespace DevLocker.VersionControl.WiseGit
 				if (statusData.IsConflicted)
 					return false;
 
-				result = ShellUtils.ExecuteCommand(Git_Command, $"add --force \"{GitFormatPath(path + ".meta")}\"", COMMAND_TIMEOUT, shellMonitor);
+				result = ExecuteCommand(path, $"add --force \"{GitFormatPath(path + ".meta")}\"", COMMAND_TIMEOUT, shellMonitor);
 				if (result.HasErrors)
 					return false;
 			}
@@ -1360,7 +1379,7 @@ namespace DevLocker.VersionControl.WiseGit
 			while (directoryMetaStatus == VCFileStatus.Unversioned) {
 
 				// Don't use the Add() method, as it calls this one.
-				var result = ShellUtils.ExecuteCommand(Git_Command, $"add --force \"{GitFormatPath(directoryMeta)}\"", COMMAND_TIMEOUT, shellMonitor);
+				var result = ExecuteCommand(newDirectory, $"add --force \"{GitFormatPath(directoryMeta)}\"", COMMAND_TIMEOUT, shellMonitor);
 				if (result.HasErrors)
 					return false;
 
@@ -1387,12 +1406,12 @@ namespace DevLocker.VersionControl.WiseGit
 
 			var keepLocalArg = keepLocal ? "--cached" : "";
 
-			var result = ShellUtils.ExecuteCommand(Git_Command, $"rm --force -r {keepLocalArg} \"{GitFormatPath(path)}\"", COMMAND_TIMEOUT, shellMonitor);
+			var result = ExecuteCommand(path, $"rm --force -r {keepLocalArg} \"{GitFormatPath(path)}\"", COMMAND_TIMEOUT, shellMonitor);
 			if (result.HasErrors)
 				return false;
 
 			if (includeMeta) {
-				result = ShellUtils.ExecuteCommand(Git_Command, $"rm --force -r {keepLocalArg} \"{GitFormatPath(path + ".meta")}\"", COMMAND_TIMEOUT, shellMonitor);
+				result = ExecuteCommand(path, $"rm --force -r {keepLocalArg} \"{GitFormatPath(path + ".meta")}\"", COMMAND_TIMEOUT, shellMonitor);
 				if (result.HasErrors)
 					return false;
 			}
@@ -1412,6 +1431,28 @@ namespace DevLocker.VersionControl.WiseGit
 				throw new IOException($"Trying to get conflict status for file {path} caused error:\n{result}!");
 
 			return resultEntries.Any(status => status.IsConflicted);
+		}
+
+		/// <summary>
+		/// List all submodule paths reccursively.
+		/// </summary>
+		public static IEnumerable<string> ListAllSubmodulePaths(int timeout = ONLINE_COMMAND_TIMEOUT, IShellMonitor shellMonitor = null)
+		{
+			var result = ShellUtils.ExecuteCommand(Git_Command, $"submodule status --recursive", timeout, shellMonitor);
+
+			if (!string.IsNullOrEmpty(result.Error)) {
+				yield break;
+			}
+
+			var output = result.Output.Replace("\r", "");
+			foreach(string line in output.Split('\n')) {
+				// NOTE that first character can be space, -, +, or U.
+				//  597944d216257cf9512f7cf4d35bd60c6b19a85f Assets/ArtLicensed (heads/master)
+				int pathStartIndex = line.IndexOf(" ", 2) + 1;  // Find space after hash.
+				int pathEndIndex = line.LastIndexOf(" ");
+
+				yield return line.Substring(pathStartIndex, pathEndIndex - pathStartIndex);
+			}
 		}
 
 		/// <summary>
@@ -1587,7 +1628,7 @@ namespace DevLocker.VersionControl.WiseGit
 					reporter.AppendTraceLine($"Created file \"{path}\" has deleted git status. Reverting git status, while keeping the original file...");
 
 					// Reset will restore the file in the index, but not in the working tree. For this do "git checkout -- <file>".
-					var result = ShellUtils.ExecuteCommand(Git_Command, $"reset -q -- \"{GitFormatPath(path)}\"", COMMAND_TIMEOUT, reporter);
+					var result = ExecuteCommand(path, $"reset -q -- \"{GitFormatPath(path)}\"", COMMAND_TIMEOUT, reporter);
 					Debug.Assert(!result.HasErrors, "Revert of deleted file failed.");
 
 					if (isMeta) {
@@ -1601,13 +1642,46 @@ namespace DevLocker.VersionControl.WiseGit
 							reporter.AppendTraceLine($"Asset \"{mainAssetPath}\" was created from outside Unity and has deleted git status. Reverting git status, while keeping the original file...");
 
 							// Reset will restore the file in the index, but not in the working tree. For this do "git checkout -- <file>".
-							result = ShellUtils.ExecuteCommand(Git_Command, $"reset -q -- \"{GitFormatPath(mainAssetPath)}\"", COMMAND_TIMEOUT, reporter);
+							result = ExecuteCommand(mainAssetPath, $"reset -q -- \"{GitFormatPath(mainAssetPath)}\"", COMMAND_TIMEOUT, reporter);
 							Debug.Assert(!result.HasErrors, "Revert of deleted file failed.");
 						}
 					}
 				}
 
 			}
+		}
+
+		private static bool MoveAssetByAddDeleteOperations(string oldPath, string newPath, ResultConsoleReporter reporter)
+		{
+			reporter.AppendTraceLine($"Moving file \"{oldPath}\" to \"{newPath}\" without git history...");
+
+			if (Directory.Exists(oldPath)) {
+				Directory.Move(oldPath, newPath);
+			} else {
+				File.Move(oldPath, newPath);
+			}
+			File.Move(oldPath + ".meta", newPath + ".meta");
+
+			// Reset after the danger is gone (manual file operations)
+			reporter.ResetErrorFlag();
+
+			var result = ExecuteCommand(oldPath, $"rm --force -r \"{GitFormatPath(oldPath)}\"", COMMAND_TIMEOUT, reporter);
+			if (result.HasErrors)
+				return false;
+
+			result = ExecuteCommand(oldPath, $"rm --force -r \"{GitFormatPath(oldPath + ".meta")}\"", COMMAND_TIMEOUT, reporter);
+			if (result.HasErrors)
+				return false;
+
+			result = ExecuteCommand(newPath, $"add \"{GitFormatPath(newPath)}\"", COMMAND_TIMEOUT, reporter);
+			if (result.HasErrors)
+				return false;
+
+			result = ExecuteCommand(newPath, $"add \"{GitFormatPath(newPath + ".meta")}\"", COMMAND_TIMEOUT, reporter);
+			if (result.HasErrors)
+				return false;
+
+			return true;
 		}
 
 		private static AssetDeleteResult OnWillDeleteAsset(string path, RemoveAssetOptions option)
@@ -1622,7 +1696,7 @@ namespace DevLocker.VersionControl.WiseGit
 
 			using (var reporter = CreateReporter()) {
 
-				var result = ShellUtils.ExecuteCommand(Git_Command, $"rm --force -r \"{GitFormatPath(path)}\"", COMMAND_TIMEOUT, reporter);
+				var result = ExecuteCommand(path, $"rm --force -r \"{GitFormatPath(path)}\"", COMMAND_TIMEOUT, reporter);
 				if (result.HasErrors) {
 
 					// fatal: pathspec '...' did not match any files
@@ -1634,7 +1708,7 @@ namespace DevLocker.VersionControl.WiseGit
 						// If it was an empty folder, make sure we delete the meta, or it may confuse the git clients.
 						// (example - rename empty folder, then delete it. From Added must turn to Deleted stats)
 						if (Directory.Exists(path)) {
-							ShellUtils.ExecuteCommand(Git_Command, $"rm --force \"{GitFormatPath(path + ".meta")}\"", COMMAND_TIMEOUT, reporter);
+							ExecuteCommand(path, $"rm --force \"{GitFormatPath(path + ".meta")}\"", COMMAND_TIMEOUT, reporter);
 							reporter.ResetErrorFlag();	// Whatever happens, happens...
 						}
 
@@ -1644,7 +1718,7 @@ namespace DevLocker.VersionControl.WiseGit
 					return AssetDeleteResult.FailedDelete;
 				}
 
-				result = ShellUtils.ExecuteCommand(Git_Command, $"rm --force \"{GitFormatPath(path + ".meta")}\"", COMMAND_TIMEOUT, reporter);
+				result = ExecuteCommand(path, $"rm --force \"{GitFormatPath(path + ".meta")}\"", COMMAND_TIMEOUT, reporter);
 				if (result.HasErrors) {
 
 					// fatal: pathspec '...' did not match any files
@@ -1761,7 +1835,28 @@ namespace DevLocker.VersionControl.WiseGit
 				if (!CheckAndAddParentFolderIfNeeded(newPath, true, reporter))
 					return AssetMoveResult.FailedMove;
 
-				var result = ShellUtils.ExecuteCommand(Git_Command, $"mv \"{GitFormatPath(oldPath)}\" \"{newPath}\"", COMMAND_TIMEOUT, reporter);
+				// Moving files from one submodule to another is not allowed (nested checkouts or externals).
+				if (GetWorkingPathFor(oldPath) != GetWorkingPathFor(newPath)) {
+
+					if (Silent || EditorUtility.DisplayDialog(
+							"Error moving asset",
+							$"Failed to move file as destination is in another submodule:\n{oldPath}\n\nWould you like to force move the file anyway?\nWARNING: You'll loose the git history of the file.\n\nTarget path:\n{newPath}",
+							"Yes, ignore git",
+							"Cancel"
+							)) {
+
+						return MoveAssetByAddDeleteOperations(oldPath, newPath, reporter)
+							? AssetMoveResult.DidMove
+							: AssetMoveResult.FailedMove
+							;
+
+					} else {
+						reporter.ResetErrorFlag();
+						return AssetMoveResult.FailedMove;
+					}
+				}
+
+				var result = ExecuteCommand(oldPath, $"mv \"{GitFormatPath(oldPath)}\" \"{newPath}\"", COMMAND_TIMEOUT, reporter);
 				if (result.HasErrors) {
 
 					// fatal: source directory is empty, source=..., destination=...
@@ -1776,39 +1871,13 @@ namespace DevLocker.VersionControl.WiseGit
 						}
 					}
 
-					// Moving files from one repository to another is not allowed (nested checkouts or externals).
-					//svn: E155023: Cannot copy to '...', as it is not from repository '...'; it is from '...'
-					// TODO: Nested repositories support is missing?
-					/*
-					if (result.Error.Contains("E155023")) {
-
-						if (Silent || EditorUtility.DisplayDialog(
-							"Error moving asset",
-							$"Failed to move file as destination is in another external repository:\n{oldPath}\n\nWould you like to force move the file anyway?\nWARNING: You'll loose the SVN history of the file.\n\nTarget path:\n{newPath}",
-							"Yes, ignore SVN",
-							"Cancel"
-							)) {
-
-							return MoveAssetByAddDeleteOperations(oldPath, newPath, reporter)
-								? AssetMoveResult.DidMove
-								: AssetMoveResult.FailedMove
-								;
-
-						} else {
-							reporter.ResetErrorFlag();
-							return AssetMoveResult.FailedMove;
-						}
-
-					}
-					*/
-
 					// Check if we recovered from the error.
 					if (reporter.HasErrors) {
 						return AssetMoveResult.FailedMove;
 					}
 				}
 
-				result = ShellUtils.ExecuteCommand(Git_Command, $"mv \"{GitFormatPath(oldPath + ".meta")}\" \"{newPath}.meta\"", COMMAND_TIMEOUT, reporter);
+				result = ExecuteCommand(oldPath, $"mv \"{GitFormatPath(oldPath + ".meta")}\" \"{newPath}.meta\"", COMMAND_TIMEOUT, reporter);
 				if (result.HasErrors)
 					return AssetMoveResult.FailedMove;
 
@@ -1891,22 +1960,28 @@ namespace DevLocker.VersionControl.WiseGit
 			}
 		}
 
-		private static IEnumerable<GitStatusData> ExtractStatuses(string output)
+		private static IEnumerable<GitStatusData> ExtractStatuses(string output, string pathFilter = "")
 		{
-			var lines = output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
+			var lines = output.Split(new[] { '\0', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+			string currentSubmoduleRoot = "";
 
 			for(int lineIndex = 0; lineIndex < lines.Length; ++lineIndex) {
 				string line = lines[lineIndex];
 
-				// TODO: Test with submodules
-				// All externals append separate sections with their statuses:
-				// Performing status on external item at '...':
-				//if (line.StartsWith("Performing status", StringComparison.Ordinal))
-				//	continue;
+				// For each submodule, you will get this line:
+				// Entering 'Assets/ArtLicensed'
+				// Store submodule path, as next status paths will be relative to it.
+				if (line.StartsWith("Entering ")) {
+					currentSubmoduleRoot = line.Substring("Entering ".Length).Trim('\'') + '/';
+					continue;
+				}
 
 				// Rules are described in "git status -h".
 				var statusData = new GitStatusData();
-				statusData.Path = line.Substring(3);
+				statusData.Path = currentSubmoduleRoot + line.Substring(3);
+
+				if (!string.IsNullOrWhiteSpace(pathFilter) && !statusData.Path.StartsWith(pathFilter))
+					continue;
 
 				// 1st is staging/index, 2nd char is working tree/files. Prefer the working status always.
 				// Note that you can have RM, AM, AD, etc...
@@ -1940,6 +2015,34 @@ namespace DevLocker.VersionControl.WiseGit
 			}
 		}
 
+		private static string GetWorkingPathFor(string usedUnityPath)
+		{
+			if (string.IsNullOrEmpty(usedUnityPath)) {
+				return null;
+			}
+
+			string workingPath = null;
+			foreach(string submoduleRoot in m_SubmoduleRoots) {
+				if (usedUnityPath.StartsWith(submoduleRoot)) {
+					workingPath = submoduleRoot;
+					// Don't break - get the longest path in case of recursive submodules. They should be sorted already?
+				}
+			}
+
+			return workingPath;
+		}
+
+		// Git commands work with the current working directory only. Submodules require running commands from their directory, not the root of the project. :(
+		private static ShellUtils.ShellResult ExecuteCommand(string usedUnityPath, string command, int timeout, IShellMonitor shellMonitor = null)
+		{
+			string workingPath = GetWorkingPathFor(usedUnityPath);
+
+			if (workingPath != null) {
+				command = command.Replace(workingPath + "/", "");	// Now adapt the command paths. Hope this works. :(
+			}
+
+			return ShellUtils.ExecuteCommand(Git_Command, command, workingPath, timeout, shellMonitor);
+		}
 
 		private static string GitFormatPath(string path)
 		{
@@ -1996,7 +2099,7 @@ namespace DevLocker.VersionControl.WiseGit
 
 			var path = AssetDatabase.GUIDToAssetPath(Selection.assetGUIDs.FirstOrDefault());
 
-			var result = ShellUtils.ExecuteCommand(Git_Command, $"status --porcelain -z \"{GitFormatPath(path)}\"");
+			var result = ExecuteCommand(path, $"status --porcelain -z \"{GitFormatPath(path)}\"", COMMAND_TIMEOUT, null);
 			if (!string.IsNullOrEmpty(result.Error)) {
 				Debug.LogError($"Git Error: {result.Error}");
 				return;

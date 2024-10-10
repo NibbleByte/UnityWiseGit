@@ -20,6 +20,7 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 		public abstract void Merge(bool wait = false);
 		public abstract void Fetch(bool wait = false);
 		public abstract void Push(bool wait = false);
+		public abstract void SubmodulesUpdate(bool wait = false);
 		public abstract void Commit(IEnumerable<string> assetPaths, bool includeMeta, bool wait = false);
 		public abstract void Add(IEnumerable<string> assetPaths, bool includeMeta, bool wait = false);
 		public abstract void Revert(IEnumerable<string> assetPaths, bool includeMeta, bool wait = false);

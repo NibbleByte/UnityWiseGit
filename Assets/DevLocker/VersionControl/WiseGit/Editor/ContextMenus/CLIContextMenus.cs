@@ -56,6 +56,11 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 			CLIContextWindow.Show($"push", true);
 		}
 
+		public override void SubmodulesUpdate(bool wait = false)
+		{
+			CLIContextWindow.Show($"submodule update", false);
+		}
+
 		public override void Commit(IEnumerable<string> assetPaths, bool includeMeta, bool wait = false)
 		{
 			if (!assetPaths.Any())

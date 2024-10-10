@@ -115,6 +115,11 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus.Implementation
 			}
 		}
 
+		public override void SubmodulesUpdate(bool wait = false)
+		{
+			UnityEditor.EditorUtility.DisplayDialog("Not Supported", "SnailGit does not support git submodules yet.", "OK");
+		}
+
 		public override void Commit(IEnumerable<string> assetPaths, bool includeMeta, bool wait = false)
 		{
 			if (!assetPaths.Any())

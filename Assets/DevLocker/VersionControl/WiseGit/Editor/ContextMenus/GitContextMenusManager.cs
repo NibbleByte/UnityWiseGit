@@ -267,6 +267,11 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus
 			m_Integration?.Push(wait: true);
 		}
 
+		public static void SubmodulesUpdate()
+		{
+			m_Integration?.SubmodulesUpdate(wait: true);
+		}
+
 
 
 		[MenuItem("Assets/Git/\u2197  Commit All", false, MenuItemPriorityStart + 42)]
