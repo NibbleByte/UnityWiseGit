@@ -303,7 +303,12 @@ namespace DevLocker.VersionControl.WiseGit
 
 			EditorApplication.quitting += () => m_IsApplicationQuitting = true;
 
-			m_SubmoduleRoots = ListAllSubmodulePaths().ToList();
+			try {
+				m_SubmoduleRoots = ListAllSubmodulePaths().ToList();
+			} catch(Exception ex) {
+				Debug.LogError("WiseGit failed to obtain list of the submodules on startup.");
+				Debug.LogException(ex);
+			}
 		}
 
 		/// <summary>
@@ -437,7 +442,14 @@ namespace DevLocker.VersionControl.WiseGit
 			}
 
 			if (!string.IsNullOrWhiteSpace(result.Output)) {
-				resultEntries.AddRange(ExtractStatuses(result.Output));
+				foreach(GitStatusData data in ExtractStatuses(result.Output)) {
+
+					// Skip submodule folder as they show changes when content has changed OR it has unknown assets (which is confusing).
+					if (m_SubmoduleRoots.Count > 0 && m_SubmoduleRoots.Contains(data.Path))
+						continue;
+
+					resultEntries.Add(data);
+				}
 			}
 
 			// Check submodules too.
@@ -451,7 +463,14 @@ namespace DevLocker.VersionControl.WiseGit
 				}
 
 				if (!string.IsNullOrWhiteSpace(result.Output)) {
-					resultEntries.AddRange(ExtractStatuses(result.Output, pathFilter: path.Replace('\\', '/')));
+					foreach (GitStatusData data in ExtractStatuses(result.Output, pathFilter: path.Replace('\\', '/'))) {
+
+						// Skip submodule folder as they show changes when content has changed OR it has unknown assets (which is confusing).
+						if (m_SubmoduleRoots.Count > 0 && m_SubmoduleRoots.Contains(data.Path))
+							continue;
+
+						resultEntries.Add(data);
+					}
 				}
 			}
 
@@ -1440,11 +1459,7 @@ namespace DevLocker.VersionControl.WiseGit
 		{
 			var result = ShellUtils.ExecuteCommand(Git_Command, $"submodule status --recursive", timeout, shellMonitor);
 
-			if (!string.IsNullOrEmpty(result.Error)) {
-				yield break;
-			}
-
-			if (string.IsNullOrWhiteSpace(result.Output)) {
+			if (!string.IsNullOrEmpty(result.Error) || string.IsNullOrWhiteSpace(result.Output)) {
 				yield break;
 			}
 
