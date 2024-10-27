@@ -31,6 +31,7 @@ Simple but powerful git integration for Unity 3D utilizing [TortoiseGit](https:/
   * If asset or its meta becomes modified a pop-up window will prompt the user to lock or ignore it.
   * The window shows if modified assets are locked by others or out of date, which prevents locking them.
   * If left unlocked, the window won't prompt again for those assets. Will prompt on editor restart.
+* [Git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) support
 * Minimal performance impact
 * Survives assembly reloads
 * You don't have to leave Unity to do git chores.
