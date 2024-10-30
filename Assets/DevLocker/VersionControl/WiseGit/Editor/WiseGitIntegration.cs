@@ -68,6 +68,12 @@ namespace DevLocker.VersionControl.WiseGit
 		/// </summary>
 		public static bool Silent => m_SilenceCount > 0;
 
+#if UNITY_2018_1_OR_NEWER
+		internal static bool IsBuildingPlayer => Application.isBatchMode || BuildPipeline.isBuildingPlayer;
+#else
+		internal static bool IsBuildingPlayer => UnityEditorInternal.InternalEditorUtility.inBatchMode || BuildPipeline.isBuildingPlayer;
+#endif
+
 		/// <summary>
 		/// Should the git Integration log operations.
 		/// </summary>
@@ -1360,7 +1366,7 @@ namespace DevLocker.VersionControl.WiseGit
 			var newDirectoryStatusData = GetStatus(directory + ".meta");
 
 			// Moving to unversioned folder -> add it to git.
-			if (newDirectoryStatusData.Status == VCFileStatus.Unversioned) {
+			if (newDirectoryStatusData.Status == VCFileStatus.Unversioned && !IsBuildingPlayer) {
 
 				if (!Silent && promptUser && !EditorUtility.DisplayDialog(
 					"Unversioned directory",
@@ -1616,7 +1622,7 @@ namespace DevLocker.VersionControl.WiseGit
 		// NOTE: This is called separately for the file and its meta.
 		private static void OnWillCreateAsset(string path)
 		{
-			if (!Enabled || TemporaryDisabled)
+			if (!Enabled || TemporaryDisabled || IsBuildingPlayer)
 				return;
 
 			var pathStatusData = GetStatus(path);
@@ -1705,7 +1711,7 @@ namespace DevLocker.VersionControl.WiseGit
 
 		private static AssetDeleteResult OnWillDeleteAsset(string path, RemoveAssetOptions option)
 		{
-			if (!Enabled || TemporaryDisabled || GitPreferencesManager.ShouldExclude(m_PersonalPrefs.Exclude.Concat(m_ProjectPrefs.Exclude), path))
+			if (!Enabled || TemporaryDisabled || IsBuildingPlayer || GitPreferencesManager.ShouldExclude(m_PersonalPrefs.Exclude.Concat(m_ProjectPrefs.Exclude), path))
 				return AssetDeleteResult.DidNotDelete;
 
 			var oldStatus = GetStatus(path).Status;
@@ -1756,7 +1762,7 @@ namespace DevLocker.VersionControl.WiseGit
 
 		private static AssetMoveResult OnWillMoveAsset(string oldPath, string newPath)
 		{
-			if (!Enabled || TemporaryDisabled || GitPreferencesManager.ShouldExclude(m_PersonalPrefs.Exclude.Concat(m_ProjectPrefs.Exclude), oldPath))
+			if (!Enabled || TemporaryDisabled || IsBuildingPlayer || GitPreferencesManager.ShouldExclude(m_PersonalPrefs.Exclude.Concat(m_ProjectPrefs.Exclude), oldPath))
 				return AssetMoveResult.DidNotMove;
 
 			// Let Unity log error for "already existing" folder, before we try to git-mv it, as it will put it inside the folder.
@@ -1831,7 +1837,7 @@ namespace DevLocker.VersionControl.WiseGit
 
 			if (m_PersonalPrefs.AskOnMovingFolders && isFolder
 				//&& newStatusData.Status != VCFileStatus.Deleted	// Was already asked, don't do it again.
-				&& !Application.isBatchMode) {
+				) {
 
 				if (!Silent && !EditorUtility.DisplayDialog(
 					"Move Versioned Folder?",

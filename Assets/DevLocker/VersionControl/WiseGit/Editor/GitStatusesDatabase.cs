@@ -75,11 +75,7 @@ namespace DevLocker.VersionControl.WiseGit
 		/// The database update can be enabled, but the git integration to be disabled as a whole.
 		/// </summary>
 		public override bool IsActive => m_PersonalPrefs.PopulateStatusesDatabase && m_PersonalPrefs.EnableCoreIntegration;
-#if UNITY_2018_1_OR_NEWER
-		public override bool TemporaryDisabled => WiseGitIntegration.TemporaryDisabled || Application.isBatchMode || BuildPipeline.isBuildingPlayer;
-#else
-		public override bool TemporaryDisabled => WiseGitIntegration.TemporaryDisabled || UnityEditorInternal.InternalEditorUtility.inBatchMode || BuildPipeline.isBuildingPlayer;
-#endif
+		public override bool TemporaryDisabled => WiseGitIntegration.TemporaryDisabled || WiseGitIntegration.IsBuildingPlayer;
 		public override bool DoTraceLogs => (m_PersonalCachedPrefs.TraceLogs & GitTraceLogs.DatabaseUpdates) != 0;
 
 		public override double RefreshInterval => m_PersonalPrefs.AutoRefreshDatabaseInterval;
