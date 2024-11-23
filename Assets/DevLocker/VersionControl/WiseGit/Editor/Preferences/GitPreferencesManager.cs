@@ -468,6 +468,10 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 			}
 
 			WiseGitIntegration.LogStatusErrorHint(operation.Result);
+
+			if (operation.Result == StatusOperationResult.UnknownError) {
+				Debug.LogError($"Git Operations:\n{operation.FinishedCombined}");
+			}
 		}
 
 		internal void TryToAuthenticate()
