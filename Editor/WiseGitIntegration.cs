@@ -112,6 +112,25 @@ namespace DevLocker.VersionControl.WiseGit
 				};
 			}
 
+			public void TruncateGitRootFromPaths()
+			{
+				if (ours != null) {
+					for (int i = 0; i < ours.Count; ++i) {
+						var our = ours[i];
+						our.path = TruncateGitRoot(our.path);
+						ours[i] = our;
+					}
+				}
+
+				if (theirs != null) {
+					for (int i = 0; i < theirs.Count; ++i) {
+						var their = theirs[i];
+						their.path = TruncateGitRoot(their.path);
+						theirs[i] = their;
+					}
+				}
+			}
+
 			public void ExcludeOutsidePaths(string path)
 			{
 				ours?.RemoveAll(entry => !entry.path.StartsWith(path, StringComparison.OrdinalIgnoreCase));
@@ -183,6 +202,8 @@ namespace DevLocker.VersionControl.WiseGit
 		private static System.Threading.Thread m_MainThread;
 
 		private static List<string> m_SubmoduleRoots;
+
+		private static string m_GitRootDifference;
 
 		private static volatile bool m_IsApplicationQuitting;
 
@@ -310,6 +331,7 @@ namespace DevLocker.VersionControl.WiseGit
 			EditorApplication.quitting += () => m_IsApplicationQuitting = true;
 
 			try {
+				// Returns empty list on git error (not git repo).
 				m_SubmoduleRoots = ListAllSubmodulePaths().ToList();
 			} catch(Exception ex) {
 				Debug.LogError("WiseGit failed to obtain list of the submodules on startup.");
@@ -391,7 +413,7 @@ namespace DevLocker.VersionControl.WiseGit
 				if (!result.HasErrors) {
 					foreach (string changePath in result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries)) {
 						if (!string.IsNullOrEmpty(changePath)) {
-							remoteChanges.Add(changePath);
+							remoteChanges.Add(TruncateGitRoot(changePath));
 						}
 					}
 				}
@@ -431,6 +453,7 @@ namespace DevLocker.VersionControl.WiseGit
 					return StatusOperationResult.UnknownError;
 
 				locksJSONEntry = JsonUtility.FromJson<LocksJSONEntry>(result.Output);
+				locksJSONEntry.TruncateGitRootFromPaths();
 				locksJSONEntry.ExcludeOutsidePaths(path);
 			}
 
@@ -735,6 +758,7 @@ namespace DevLocker.VersionControl.WiseGit
 		{
 			string directoryArg = skipFilesInIgnoredDirectories ? "--directory" : "";
 
+			// No need to TruncateGitRoot().
 			var result = ExecuteCommand(path, $"ls-files -i -o --exclude-standard {directoryArg} -z \"{GitFormatPath(path)}\"", COMMAND_TIMEOUT);
 
 			// Happens for nested directory paths of ignored one, only when using --directory.
@@ -1463,6 +1487,7 @@ namespace DevLocker.VersionControl.WiseGit
 		/// </summary>
 		public static IEnumerable<string> ListAllSubmodulePaths(int timeout = ONLINE_COMMAND_TIMEOUT, IShellMonitor shellMonitor = null)
 		{
+			// No need to TruncateGitRoot().
 			var result = ShellUtils.ExecuteCommand(Git_Command, $"submodule status --recursive", timeout, shellMonitor);
 
 			if (!string.IsNullOrEmpty(result.Error) || string.IsNullOrWhiteSpace(result.Output)) {
@@ -1525,6 +1550,15 @@ namespace DevLocker.VersionControl.WiseGit
 			return operation;
 		}
 
+
+		/// <summary>
+		/// Get the git root folder abolute path.
+		/// It may not be the same as the Unity project folder.
+		/// </summary>
+		public static string GetGitRootPath()
+		{
+			return ShellUtils.ExecuteCommand(Git_Command, "rev-parse --show-toplevel", COMMAND_TIMEOUT).Output;
+		}
 
 		/// <summary>
 		/// Retrieve working branch name that is checked out.
@@ -1997,13 +2031,17 @@ namespace DevLocker.VersionControl.WiseGit
 				// Entering 'Assets/ArtLicensed'
 				// Store submodule path, as next status paths will be relative to it.
 				if (line.StartsWith("Entering ")) {
+					// No need to TruncateGitRoot().
 					currentSubmoduleRoot = line.Substring("Entering ".Length).Trim('\'') + '/';
 					continue;
 				}
 
 				// Rules are described in "git status -h".
 				var statusData = new GitStatusData();
-				statusData.Path = currentSubmoduleRoot + line.Substring(3);
+				statusData.Path = string.IsNullOrEmpty(currentSubmoduleRoot)
+					? TruncateGitRoot(line.Substring(3))	// "--porcelain" forces paths relative to the git root.
+					: currentSubmoduleRoot + line.Substring(3)
+					;
 
 				if (!string.IsNullOrWhiteSpace(pathFilter) && !statusData.Path.StartsWith(pathFilter))
 					continue;
@@ -2038,6 +2076,26 @@ namespace DevLocker.VersionControl.WiseGit
 
 				yield return statusData;
 			}
+		}
+
+		/// <summary>
+		/// Sometimes git returns path relative to the root, not to the working folder. Mainly when using "--porcelain" parameter.
+		/// This method will truncate the path down to the Unity project location, if needed.
+		/// </summary>
+		private static string TruncateGitRoot(string unityPath)
+		{
+			// There could be a race condition here, but the result should always remain the same.
+			if (m_GitRootDifference == null) {
+				m_GitRootDifference = ShellUtils.ExecuteCommand(Git_Command, $"rev-parse --show-toplevel", COMMAND_TIMEOUT).Output ?? "";
+				m_GitRootDifference = m_GitRootDifference.Replace('\\', '/');
+				m_GitRootDifference = ProjectRootUnity.Replace(m_GitRootDifference, "").TrimStart('/');
+			}
+
+			if (m_GitRootDifference.Length > 0 && unityPath.StartsWith(m_GitRootDifference)) {
+				unityPath = unityPath.Substring(m_GitRootDifference.Length + 1);
+			}
+
+			return unityPath;
 		}
 
 		private static string GetWorkingPathFor(string usedUnityPath)
@@ -2124,7 +2182,7 @@ namespace DevLocker.VersionControl.WiseGit
 
 			var path = AssetDatabase.GUIDToAssetPath(Selection.assetGUIDs.FirstOrDefault());
 
-			var result = ExecuteCommand(path, $"status --porcelain -z \"{GitFormatPath(path)}\"", COMMAND_TIMEOUT, null);
+			var result = ExecuteCommand(path, $"status --porcelain \"{GitFormatPath(path)}\"", COMMAND_TIMEOUT, null);
 			if (!string.IsNullOrEmpty(result.Error)) {
 				Debug.LogError($"Git Error: {result.Error}");
 				return;
