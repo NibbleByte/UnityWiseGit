@@ -838,6 +838,12 @@ namespace DevLocker.VersionControl.WiseGit
 				//if (result.Error.Contains("???"))
 				//	return LockOperationResult.RemoteHasChanges;
 
+				// Locking ... failed: exit status 255
+				// https://github.com/NibbleByte/UnityWiseGit/issues/1#issuecomment-2489845902
+				if (result.Error.Contains("failed: exit status 255") && shellMonitor != null) {
+					shellMonitor.AppendErrorLine("(hint - you may be having issues with your SSH setup. For example 'ssh-add' can't find 'ssh-askpass')");
+				}
+
 				return (LockOperationResult) ParseCommonStatusError(result.Error);
 			}
 
@@ -1614,11 +1620,17 @@ namespace DevLocker.VersionControl.WiseGit
 		{
 			var operation = GitAsyncOperation<StatusOperationResult>.Start(op => {
 				// This requres authentication.
-				var result = ShellUtils.ExecuteCommand(Git_Command, $"remote show {GetTrackedRemote()}", COMMAND_TIMEOUT);
+				var result = ShellUtils.ExecuteCommand(Git_Command, $"remote show {GetTrackedRemote()}", COMMAND_TIMEOUT, op);
 
-				if (result.HasErrors) {
+				if (result.HasErrors)
 					return ParseCommonStatusError(result.Error);
-				}
+
+				// lfs may also have issues, check it as well.
+				// https://github.com/NibbleByte/UnityWiseGit/issues/1#issuecomment-2489845902
+				result = ShellUtils.ExecuteCommand(Git_Command, $"lfs locks", COMMAND_TIMEOUT, op);
+
+				if (result.HasErrors)
+					return ParseCommonStatusError(result.Error);
 
 				return StatusOperationResult.Success;
 			});
