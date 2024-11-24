@@ -216,15 +216,19 @@ namespace DevLocker.VersionControl.WiseGit
 
 			private readonly ConcurrentQueue<string> m_CombinedOutput = new ConcurrentQueue<string>();
 
+			// All the combined output set on Dispose.
+			public string FinalOutput { get; private set; }
+
+			public bool RecordOutputLines = false;
 			private bool m_HasErrors = false;
 			private bool m_HasCommand = false;
-			private bool m_LogOutput;
+			private bool m_LogCombinedOutputOnDispose;	// ... if no error happened
 			private bool m_Silent;
 
 
-			public ResultConsoleReporter(bool logOutput, bool silent, string initialText = "")
+			public ResultConsoleReporter(bool logOutputOnDispose, bool silent, string initialText = "")
 			{
-				m_LogOutput = logOutput;
+				m_LogCombinedOutputOnDispose = logOutputOnDispose;
 				m_Silent = silent;
 
 				if (!string.IsNullOrEmpty(initialText)) {
@@ -243,7 +247,9 @@ namespace DevLocker.VersionControl.WiseGit
 
 			public void AppendOutputLine(string line)
 			{
-				// Not used for now...
+				if (RecordOutputLines) {
+					m_CombinedOutput.Enqueue(line);
+				}
 			}
 
 			// Because using AppendOutputLine() will output all the git operation spam that we parse.
@@ -289,15 +295,17 @@ namespace DevLocker.VersionControl.WiseGit
 						output.AppendLine(line);
 					}
 
+					FinalOutput = output.ToString();
+
 					if (m_HasErrors) {
-						Debug.LogError(output);
+						Debug.LogError(FinalOutput);
 						if (!m_Silent) {
 							if (m_MainThread == System.Threading.Thread.CurrentThread) {
 								DisplayError("Git error happened while processing the assets. Check the logs.");
 							}
 						}
-					} else if (m_LogOutput && m_HasCommand) {
-						Debug.Log(output);
+					} else if (m_LogCombinedOutputOnDispose && m_HasCommand) {
+						Debug.Log(FinalOutput);
 					}
 
 					m_HasErrors = false;
@@ -2183,6 +2191,39 @@ namespace DevLocker.VersionControl.WiseGit
 #else
 			EditorUtility.DisplayDialog("Git Error", message, "I will!");
 #endif
+		}
+
+		internal static void CopyDebugData(string pluginVersion)
+		{
+			var reporter = new ResultConsoleReporter(true, true) { RecordOutputLines = true };
+			using (reporter) {
+
+				reporter.AppendTraceLine($"========== Report Data ==========");
+				reporter.AppendTraceLine($"WiseGit Version: {pluginVersion}");
+				reporter.AppendTraceLine($"Unity Version: {Application.unityVersion}");
+				reporter.AppendTraceLine($"Operating System: {SystemInfo.operatingSystem}");
+				reporter.AppendTraceLine($"System Memory: {SystemInfo.systemMemorySize}");
+				reporter.AppendTraceLine($"CPU Type: {SystemInfo.processorType}");
+				reporter.AppendTraceLine($"Environment PATH:\n{Environment.GetEnvironmentVariable("PATH")}");
+				reporter.AppendTraceLine($"");
+				reporter.AppendTraceLine($"");
+
+				string[] commands = new[] {
+					$"version",
+					$"status --porcelain \"{GitFormatPath(ProjectRootNative)}\"",
+					$"remote show {GetTrackedRemote()}",
+					$"lfs version",
+					$"lfs locks --verify --json",
+				};
+
+				foreach ( string command in commands ) {
+					var result = ShellUtils.ExecuteCommand(Git_Command, command, ONLINE_COMMAND_TIMEOUT, reporter);
+					if (result.HasErrors)
+						break;
+				}
+			}
+
+			EditorGUIUtility.systemCopyBuffer = reporter.FinalOutput;
 		}
 
 		// Use for debug.
