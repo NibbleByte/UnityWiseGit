@@ -364,7 +364,7 @@ namespace DevLocker.VersionControl.WiseGit.LockPrompting
 				}
 
 				var lockPromptParam = m_ProjectPrefs.LockPromptParameters
-					.FirstOrDefault(al => assetPath.StartsWith(al.TargetFolder, StringComparison.OrdinalIgnoreCase));
+					.FirstOrDefault(al => WiseGitIntegration.ArePathsNested(al.TargetFolder, assetPath));
 
 				if (string.IsNullOrEmpty(lockPromptParam.TargetFolder))
 					continue;
@@ -400,7 +400,7 @@ namespace DevLocker.VersionControl.WiseGit.LockPrompting
 					}
 
 					var lockPromptParam = m_ProjectPrefs.LockPromptParameters
-						.FirstOrDefault(al => assetPath.StartsWith(al.TargetFolder, StringComparison.OrdinalIgnoreCase));
+						.FirstOrDefault(al => WiseGitIntegration.ArePathsNested(al.TargetFolder, assetPath));
 
 					if (string.IsNullOrEmpty(lockPromptParam.TargetFolder))
 						continue;

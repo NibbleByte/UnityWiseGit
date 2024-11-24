@@ -133,8 +133,8 @@ namespace DevLocker.VersionControl.WiseGit
 
 			public void ExcludeOutsidePaths(string path)
 			{
-				ours?.RemoveAll(entry => !entry.path.StartsWith(path, StringComparison.OrdinalIgnoreCase));
-				theirs?.RemoveAll(entry => !entry.path.StartsWith(path, StringComparison.OrdinalIgnoreCase));
+				ours?.RemoveAll(entry => !ArePathsNested(path, entry.path));
+				theirs?.RemoveAll(entry => !ArePathsNested(path, entry.path));
 			}
 
 			public void ApplyAndForgetStatus(string path, out VCLockStatus lockStatus, out LockDetails lockDetails)
@@ -2166,6 +2166,21 @@ namespace DevLocker.VersionControl.WiseGit
 		private static IEnumerable<string> Enumerate(string str)
 		{
 			yield return str;
+		}
+
+		// Check if child path is inside the parent. This will make sure that similar names don't get mixed up:
+		// Assets/Art
+		// Assets/Art/foo.png
+		// Assets/ArtPrototyping
+		// Assets/ArtPrototyping/foo.png
+		internal static bool ArePathsNested(string parentPath, string childPath)
+		{
+			if (parentPath.EndsWith('/')) {
+				parentPath = parentPath.TrimEnd('/');
+			}
+
+			return childPath.StartsWith(parentPath, StringComparison.OrdinalIgnoreCase) &&
+				(childPath.Length == parentPath.Length || childPath[parentPath.Length] == '/');
 		}
 
 		private static void DisplayError(string message)
