@@ -55,6 +55,9 @@ namespace DevLocker.VersionControl.WiseGit
 		[MenuItem(InvalidateDatabaseMenuText, false, ContextMenus.GitContextMenusManager.MenuItemPriorityStart + 145)]
 		public static void InvalidateDatabaseMenu()
 		{
+			if (!GitPreferencesManager.Instance.PersonalPrefs.EnableCoreIntegration)
+				return;
+
 			WiseGitIntegration.ClearLastDisplayedError();
 			GitPreferencesManager.Instance.TemporarySilenceLockPrompts = false;
 			GitStatusesDatabase.Instance.InvalidateDatabase();

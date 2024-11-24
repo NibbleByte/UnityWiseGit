@@ -336,6 +336,8 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 
 		public void CheckGitSupport()
 		{
+			string pathEnvVariable = Environment.GetEnvironmentVariable("PATH").TrimEnd(':', ';');
+
 #if UNITY_EDITOR_OSX
 			// The terminal runs with PATH environment variable that has more paths included than Unity (or any GUI app).
 			// It reads additional paths from '/etc/paths' and '/etc/paths.d' and any user profile at ~.
@@ -349,7 +351,6 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 			// This also fixes the issue with git not finding git-lfs executable
 			// (which can be added by homebrew or installed manually at '/usr/local/bin' from https://git-lfs.com)
 			// So we don't have to link it like those guys: https://github.com/sublimehq/sublime_merge/issues/1438#issuecomment-1621436375
-			string pathEnvVariable = Environment.GetEnvironmentVariable("PATH");
 
 			if (!pathEnvVariable.Contains("/usr/local/bin")) {
 				pathEnvVariable += ":/usr/local/bin";
@@ -366,6 +367,30 @@ namespace DevLocker.VersionControl.WiseGit.Preferences
 				Environment.SetEnvironmentVariable("PATH", pathEnvVariable);
 			}
 #endif
+			{
+				string gitPath = PersonalPrefs.GitCLIPath;
+
+				if (string.IsNullOrWhiteSpace(gitPath)) {
+					gitPath = ProjectPrefs.PlatformGitCLIPath;
+				}
+
+				// If user specified git binary path, set it's location as PATH environment variable,
+				// so git can find the lfs executable in the same folder, hopefully.
+				if (!string.IsNullOrWhiteSpace(gitPath)) {
+					gitPath = Path.IsPathRooted(gitPath) ? gitPath : Path.Combine(WiseGitIntegration.ProjectRootNative, gitPath);
+
+					gitPath = Path.GetDirectoryName(gitPath);
+
+					if (!pathEnvVariable.Contains(gitPath)) {
+#if UNITY_EDITOR_WIN
+						pathEnvVariable += $";{gitPath}";
+#else
+						pathEnvVariable += $":{gitPath}";
+#endif
+						Environment.SetEnvironmentVariable("PATH", pathEnvVariable);
+					}
+				}
+			}
 
 			string gitError;
 			try {

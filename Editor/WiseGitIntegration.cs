@@ -174,19 +174,8 @@ namespace DevLocker.VersionControl.WiseGit
 
 		internal static string Git_Command {
 			get {
-				string userPath = m_PersonalPrefs.GitCLIPath;
-
-				if (string.IsNullOrWhiteSpace(userPath)) {
-					userPath = m_ProjectPrefs.PlatformGitCLIPath;
-				}
-
-				if (string.IsNullOrWhiteSpace(userPath))
-					return "git";
-
-				return userPath.StartsWith("/") || userPath.Contains(":")
-					? userPath // Assume absolute path
-					: Path.Combine(ProjectRootNative, userPath)
-					;
+				// Custom CLI path is set as PATH environment variable in the GitPreferencesManager.CheckGitSupport().
+				return "git";
 			}
 		}
 
@@ -2219,6 +2208,7 @@ namespace DevLocker.VersionControl.WiseGit
 				reporter.AppendTraceLine($"Operating System: {SystemInfo.operatingSystem}");
 				reporter.AppendTraceLine($"System Memory: {SystemInfo.systemMemorySize}");
 				reporter.AppendTraceLine($"CPU Type: {SystemInfo.processorType}");
+				reporter.AppendTraceLine($"Environment GIT_LFS_PATH: {Environment.GetEnvironmentVariable("GIT_LFS_PATH")}");
 				reporter.AppendTraceLine($"Environment PATH:\n{Environment.GetEnvironmentVariable("PATH")}");
 				reporter.AppendTraceLine($"");
 				reporter.AppendTraceLine($"");
