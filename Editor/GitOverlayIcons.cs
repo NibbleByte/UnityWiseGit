@@ -55,8 +55,10 @@ namespace DevLocker.VersionControl.WiseGit
 		[MenuItem(InvalidateDatabaseMenuText, false, ContextMenus.GitContextMenusManager.MenuItemPriorityStart + 145)]
 		public static void InvalidateDatabaseMenu()
 		{
-			if (!GitPreferencesManager.Instance.PersonalPrefs.EnableCoreIntegration)
+			if (!GitPreferencesManager.Instance.PersonalPrefs.EnableCoreIntegration || !GitPreferencesManager.Instance.PersonalPrefs.PopulateStatusesDatabase) {
+				EditorUtility.DisplayDialog("Integration Disabled", "Can't refresh the icons as the WiseGit integration is disabled. Check in the WiseGit preferences.", "Ok");
 				return;
+			}
 
 			WiseGitIntegration.ClearLastDisplayedError();
 			GitPreferencesManager.Instance.TemporarySilenceLockPrompts = false;
