@@ -590,7 +590,7 @@ namespace DevLocker.VersionControl.WiseGit
 				return VCFileStatus.Excluded;
 
 			foreach (string ignoredPath in m_IgnoredEntries) {
-				if (path.StartsWith(ignoredPath, StringComparison.OrdinalIgnoreCase) || (ignoredPath.EndsWith('/') && ignoredPath == path + '/')) {
+				if (WiseGitIntegration.ArePathsNested(ignoredPath, path)) {
 					return VCFileStatus.Ignored;
 				}
 			}
@@ -628,7 +628,7 @@ namespace DevLocker.VersionControl.WiseGit
 				path = path ?? AssetDatabase.GUIDToAssetPath(guid);
 
 				foreach (string unversionedFolder in m_UnversionedFolders) {
-					if (path.StartsWith(unversionedFolder, StringComparison.OrdinalIgnoreCase))
+					if (WiseGitIntegration.ArePathsNested(unversionedFolder, path))
 						return new GitStatusData() { Path = path, Status = VCFileStatus.Unversioned, LockDetails = LockDetails.Empty };
 				}
 			}
@@ -637,7 +637,7 @@ namespace DevLocker.VersionControl.WiseGit
 				path = path ?? AssetDatabase.GUIDToAssetPath(guid);
 
 				foreach (string ignoredPath in m_IgnoredEntries) {
-					if (path.StartsWith(ignoredPath, StringComparison.OrdinalIgnoreCase) || (ignoredPath.EndsWith('/') && ignoredPath == path + '/')) {
+					if (WiseGitIntegration.ArePathsNested(ignoredPath, path)) {
 						return new GitStatusData() { Path = path, Status = VCFileStatus.Ignored, LockDetails = LockDetails.Empty };
 					}
 				}
