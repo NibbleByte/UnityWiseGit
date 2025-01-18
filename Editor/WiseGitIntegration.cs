@@ -1703,10 +1703,13 @@ namespace DevLocker.VersionControl.WiseGit
 						var mainAssetPath = path.Substring(0, path.Length - ".meta".Length);
 
 						var mainStatusData = GetStatus(mainAssetPath, true, reporter);
+						var status = mainStatusData.Status;
 
 						// If asset came OUTSIDE of Unity, OnWillCreateAsset() will get called only for it's meta,
 						// leaving the main asset with Deleted git status and existing file.
-						if (File.Exists(mainAssetPath) && mainStatusData.Status == VCFileStatus.Deleted) {
+						// NOTE: if deleted file exists on disk, git will return two statuses - D & U so check for both. GetStatus() above returns U in this case.
+						//		 Example: try baking scene lighting - ReflectionProbe-0.exr will be unversioned.
+						if (File.Exists(mainAssetPath) && (status == VCFileStatus.Deleted || status == VCFileStatus.Unversioned)) {
 							reporter.AppendTraceLine($"Asset \"{mainAssetPath}\" was created from outside Unity and has deleted git status. Reverting git status, while keeping the original file...");
 
 							// Reset will restore the file in the index, but not in the working tree. For this do "git checkout -- <file>".
