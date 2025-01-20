@@ -189,6 +189,7 @@ namespace DevLocker.VersionControl.WiseGit
 		private static HashSet<string> m_PendingErrorMessages = new HashSet<string>();
 
 		private static System.Threading.Thread m_MainThread;
+		private static bool m_IsMainThread => m_MainThread == System.Threading.Thread.CurrentThread;
 
 		private static List<string> m_SubmoduleRoots;
 
@@ -289,7 +290,7 @@ namespace DevLocker.VersionControl.WiseGit
 					if (m_HasErrors) {
 						Debug.LogError(FinalOutput);
 						if (!m_Silent) {
-							if (m_MainThread == System.Threading.Thread.CurrentThread) {
+							if (m_IsMainThread) {
 								DisplayError("Git error happened while processing the assets. Check the logs.");
 							}
 						}
@@ -2136,7 +2137,57 @@ namespace DevLocker.VersionControl.WiseGit
 				command = command.Replace(workingPath + "/", "");	// Now adapt the command paths. Hope this works. :(
 			}
 
-			return ShellUtils.ExecuteCommand(Git_Command, command, workingPath, timeout, shellMonitor);
+			ShellUtils.ShellResult result;
+			int attempts = 0;
+			int attemptsMax = 10 * 30; /* 30 seconds */
+			do {
+				result = ShellUtils.ExecuteCommand(Git_Command, command, workingPath, timeout, shellMonitor);
+
+				// git operations race condition may occur producing this error:
+				//
+				// fatal: Unable to create '.../.git/index.lock': File exists.
+				// Another git process seems to be running in this repository, e.g.
+				// an editor opened by 'git commit'. Please make sure all processes
+				// are terminated then try again. If it still fails, a git process
+				// may have crashed in this repository earlier:
+				// remove the file manually to continue.
+				//
+				// For example - sometimes when rebaking scene. This deletes and adds the baked maps, causing a lot of database refreshes in another thread.
+
+				if (!string.IsNullOrWhiteSpace(result.Error) && result.Error.Contains(".git/index.lock") && result.Error.Contains("File exists.")) {
+					if (m_IsMainThread) {
+
+						// IMPORTANT: If you keep seeing this progress bar and it goes 100% every time, remove this file ".git/index.lock"
+						//			  This file is left there when git crashed, preventing further operations.
+						bool cancel = EditorUtility.DisplayCancelableProgressBar("Waiting Git", "Waiting for git last operation to finish...", attempts / (float)attemptsMax);
+						if (cancel)
+							break;
+					}
+
+					// Retry command instead of checking if ".git/index.lock" file exists, as it would be best for git itself to check -
+					// it may do better job than us as a race condition is still possible.
+					attempts++;
+					//Debug.LogWarning(attempts);
+					System.Threading.Thread.Sleep(100);
+
+				} else {
+					// All good - clean up and return the result.
+					break;
+				}
+			} while (attempts < attemptsMax);
+
+			if (attempts > 0) {
+				// HACK: yes, but I really want to clear the error flag or error will pop-up to the user.
+				if (!result.HasErrors && shellMonitor is ResultConsoleReporter resultReporter) {
+					resultReporter.ResetErrorFlag();
+				}
+
+				if (m_IsMainThread) {
+					EditorUtility.ClearProgressBar();
+				}
+			}
+
+			return result;
 		}
 
 		private static string GitFormatPath(string path)
