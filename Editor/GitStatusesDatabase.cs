@@ -467,7 +467,7 @@ namespace DevLocker.VersionControl.WiseGit
 			// Folders don't have locks.
 			statusData.LockStatus = VCLockStatus.NoLock;
 
-			statusData.Path = Path.GetDirectoryName(statusData.Path);
+			statusData.Path = Path.GetDirectoryName(statusData.Path).Replace('\\', '/');
 
 			while (!string.IsNullOrEmpty(statusData.Path)) {
 				// "Packages" folder doesn't have valid guid. "Assets" do have a special guid.
@@ -490,7 +490,7 @@ namespace DevLocker.VersionControl.WiseGit
 				if (!moveToNext)
 					return;
 
-				statusData.Path = Path.GetDirectoryName(statusData.Path);
+				statusData.Path = Path.GetDirectoryName(statusData.Path).Replace('\\', '/');
 			}
 		}
 
