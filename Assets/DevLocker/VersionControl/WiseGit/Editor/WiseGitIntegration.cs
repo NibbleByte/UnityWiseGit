@@ -754,6 +754,8 @@ namespace DevLocker.VersionControl.WiseGit
 		/// <param name="skipFilesInIgnoredDirectories">If true, when whole directory is ignored, return just the directory, without the files in it.</param>
 		public static string[] GetIgnoredPaths(string path, bool skipFilesInIgnoredDirectories)
 		{
+			path = path.Replace('\\', '/');
+
 			string directoryArg = skipFilesInIgnoredDirectories ? "--directory" : "";
 
 			// No need to TruncateGitRoot().
@@ -802,6 +804,8 @@ namespace DevLocker.VersionControl.WiseGit
 		/// </summary>
 		public static LockOperationResult LockFiles(IEnumerable<string> paths, bool force, int timeout = ONLINE_COMMAND_TIMEOUT, IShellMonitor shellMonitor = null)
 		{
+			paths = paths.Select(p => p.Replace('\\', '/')).ToList();
+
 			// Locking for non-existing or unversion files works, which is confusing. Don't allow that.
 			if (paths.Any(p => GetStatus(p, logErrorHint: false).Status == VCFileStatus.Unversioned)) {
 				shellMonitor?.AppendErrorLine("Cannot lock unversioned files.");
@@ -885,6 +889,8 @@ namespace DevLocker.VersionControl.WiseGit
 		/// </summary>
 		public static LockOperationResult UnlockFiles(IEnumerable<string> paths, bool force, int timeout = ONLINE_COMMAND_TIMEOUT, IShellMonitor shellMonitor = null)
 		{
+			paths = paths.Select(p => p.Replace('\\', '/')).ToList();
+
 			// Locking for non-existing or unversion files works, which is confusing. Don't allow that.
 			if (paths.Any(p => GetStatus(p, logErrorHint: false).Status == VCFileStatus.Unversioned)) {
 				shellMonitor?.AppendErrorLine("Cannot unlock unversioned files.");
@@ -1152,6 +1158,8 @@ namespace DevLocker.VersionControl.WiseGit
 			if (string.IsNullOrWhiteSpace(message))
 				return PushOperationResult.MessageIsEmpty;
 
+			assetPaths = assetPaths?.Select(p => p.Replace('\\', '/')).ToList();
+
 			if (includeMeta && assetPaths != null) {
 				assetPaths = assetPaths.Select(path => path + ".meta").Concat(assetPaths);
 			}
@@ -1280,6 +1288,8 @@ namespace DevLocker.VersionControl.WiseGit
 		/// </summary>
 		public static RevertOperationResult Revert(IEnumerable<string> assetPathspecs, bool includeMeta, bool checkoutAfterReset, int timeout = -1, IShellMonitor shellMonitor = null)
 		{
+			assetPathspecs = assetPathspecs.Select(p => p.Replace('\\', '/')).ToList();
+
 			if (includeMeta) {
 				assetPathspecs = assetPathspecs.Select(path => path + ".meta").Concat(assetPathspecs);
 			}
@@ -1336,6 +1346,8 @@ namespace DevLocker.VersionControl.WiseGit
 			if (string.IsNullOrEmpty(path))
 				return true;
 
+			path = path.Replace('\\', '/');
+
 			// Will add parent folders and their metas.
 			var success = CheckAndAddParentFolderIfNeeded(path, false, shellMonitor);
 			if (success == false)
@@ -1382,7 +1394,7 @@ namespace DevLocker.VersionControl.WiseGit
 		/// </summary>
 		public static bool CheckAndAddParentFolderIfNeeded(string path, bool promptUser, IShellMonitor shellMonitor = null)
 		{
-			var directory = Path.GetDirectoryName(path);
+			var directory = Path.GetDirectoryName(path).Replace('\\', '/');
 
 			// Special case - Root folders like Assets, ProjectSettings, etc...
 			// They don't have metas and git doesn't care about directories.
@@ -1422,6 +1434,8 @@ namespace DevLocker.VersionControl.WiseGit
 		/// </summary>
 		public static bool AddParentFolders(string newDirectory, IShellMonitor shellMonitor = null)
 		{
+			newDirectory = newDirectory.Replace('\\', '/');
+
 			// If working outside Assets folder, don't consider metas.
 			if (!newDirectory.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
 				return true;
@@ -1436,7 +1450,7 @@ namespace DevLocker.VersionControl.WiseGit
 				if (result.HasErrors)
 					return false;
 
-				directoryMeta = Path.GetDirectoryName(directoryMeta) + ".meta";
+				directoryMeta = Path.GetDirectoryName(directoryMeta).Replace('\\', '/') + ".meta";
 
 				// The assets folder doesn't have meta - we reached the top.
 				if (directoryMeta.Equals("Assets.meta", StringComparison.OrdinalIgnoreCase))
@@ -1456,6 +1470,8 @@ namespace DevLocker.VersionControl.WiseGit
 		{
 			if (string.IsNullOrEmpty(path))
 				return true;
+
+			path = path.Replace('\\', '/');
 
 			var keepLocalArg = keepLocal ? "--cached" : "";
 
@@ -2129,9 +2145,10 @@ namespace DevLocker.VersionControl.WiseGit
 		}
 
 		// Git commands work with the current working directory only. Submodules require running commands from their directory, not the root of the project. :(
-		private static ShellUtils.ShellResult ExecuteCommand(string usedUnityPath, string command, int timeout, IShellMonitor shellMonitor = null)
+		// NOTE: pass in unity formatted paths, i.e. forward / slashes!!!
+		private static ShellUtils.ShellResult ExecuteCommand(string usedUNITYPath, string command, int timeout, IShellMonitor shellMonitor = null)
 		{
-			string workingPath = GetWorkingPathFor(usedUnityPath);
+			string workingPath = GetWorkingPathFor(usedUNITYPath);
 
 			if (workingPath != null) {
 				command = command.Replace(workingPath + "/", "");	// Now adapt the command paths. Hope this works. :(
