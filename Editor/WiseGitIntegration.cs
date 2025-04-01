@@ -1829,7 +1829,8 @@ namespace DevLocker.VersionControl.WiseGit
 				return AssetMoveResult.DidNotMove;
 
 			// Let Unity log error for "already existing" folder, before we try to git-mv it, as it will put it inside the folder.
-			if (Directory.Exists(newPath))
+			// File can also exist and fail the renaming. Can happen if renaming via code with AssetDatabase.RenameAsset().
+			if (Directory.Exists(newPath) || File.Exists(newPath))
 				return AssetMoveResult.DidNotMove;
 
 			var oldStatusData = GetStatus(oldPath);
