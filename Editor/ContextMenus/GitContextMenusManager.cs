@@ -240,6 +240,8 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus
 			// If Git downloads files while Unity is crunching assets, GUID database may get corrupted.
 			// TortoiseGit handles nested repositories gracefully and updates them one after another. SnailGit - not so much. :(
 			m_Integration?.Pull(wait: true);
+
+			AssetDatabase.Refresh();
 		}
 
 		// It is recommended to freeze Unity while updating.
@@ -253,23 +255,31 @@ namespace DevLocker.VersionControl.WiseGit.ContextMenus
 		public static void MergeAll()
 		{
 			m_Integration?.Merge(wait: true);
+
+			AssetDatabase.Refresh();
 		}
 
 		[MenuItem("Assets/Git/\u2935  Fetch All", false, MenuItemPriorityStart + 24)]
 		public static void FetchAll()
 		{
 			m_Integration?.Fetch(wait: true);
+
+			AssetDatabase.Refresh();
 		}
 
 		[MenuItem("Assets/Git/\u2197  Push All", false, MenuItemPriorityStart + 28)]
 		public static void PushAll()
 		{
 			m_Integration?.Push(wait: true);
+
+			AssetDatabase.Refresh();
 		}
 
 		public static void SubmodulesUpdate()
 		{
 			m_Integration?.SubmodulesUpdate(wait: true);
+
+			AssetDatabase.Refresh();
 		}
 
 
