@@ -179,10 +179,13 @@ namespace DevLocker.VersionControl.WiseGit
 					FetchRemoteChanges(reporter);
 				}
 
-				GatherStatusDataInThreadRecursive("Assets", statuses, unversionedFolders, nestedRepositories, reporter);
-#if UNITY_2018_4_OR_NEWER
-				GatherStatusDataInThreadRecursive("Packages", statuses, unversionedFolders, nestedRepositories, reporter);
-#endif
+				//GatherStatusDataInThreadRecursive("Assets", statuses, unversionedFolders, nestedRepositories, reporter);
+				//GatherStatusDataInThreadRecursive("Packages", statuses, unversionedFolders, nestedRepositories, reporter);
+
+				// Instead of asking twice, do it once for everything and filter by path.
+				GatherStatusDataInThreadRecursive("", statuses, unversionedFolders, nestedRepositories, reporter);
+				statuses.RemoveAll(s => !s.Path.StartsWith("Assets/") && !s.Path.StartsWith("Packages/"));
+
 				var slashes = new char[] { '/', '\\' };
 
 				// Add excluded items explicitly so their icon shows even when "Normal status green icon" is disabled.
@@ -197,10 +200,13 @@ namespace DevLocker.VersionControl.WiseGit
 
 
 				if (m_PersonalCachedPrefs.PopulateIgnoresDatabase) {
-					ignoredEntries.AddRange(WiseGitIntegration.GetIgnoredPaths("Assets", true));
-#if UNITY_2018_4_OR_NEWER
-					ignoredEntries.AddRange(WiseGitIntegration.GetIgnoredPaths("Packages", true));
-#endif
+					//ignoredEntries.AddRange(WiseGitIntegration.GetIgnoredPaths("Assets", true));
+					//ignoredEntries.AddRange(WiseGitIntegration.GetIgnoredPaths("Packages", true));
+
+					// Instead of asking twice, do it once for everything and filter by path.
+					ignoredEntries.AddRange(WiseGitIntegration.GetIgnoredPaths("", true));
+					ignoredEntries.RemoveAll(p => !p.StartsWith("Assets/") && !p.StartsWith("Packages/"));
+
 					timings.AppendLine($"Gather {ignoredEntries.Count} ignores - {stopwatch.ElapsedMilliseconds / 1000f}s");
 					stopwatch.Restart();
 				}

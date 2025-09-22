@@ -783,6 +783,10 @@ namespace DevLocker.VersionControl.WiseGit
 		{
 			path = path.Replace('\\', '/');
 
+			if (string.IsNullOrWhiteSpace(path)) {
+				path = ".";
+			}
+
 			string directoryArg = skipFilesInIgnoredDirectories ? "--directory" : "";
 
 			// No need to TruncateGitRoot().
