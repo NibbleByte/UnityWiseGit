@@ -118,6 +118,14 @@ namespace DevLocker.VersionControl.WiseGit
 					for (int i = 0; i < ours.Count; ++i) {
 						var our = ours[i];
 						our.path = TruncateGitRoot(our.path);
+
+						// Is path outside our Unity project?
+						if (string.IsNullOrEmpty(our.path)) {
+							ours.RemoveAt(i);
+							--i;
+							continue;
+						}
+
 						ours[i] = our;
 					}
 				}
@@ -126,6 +134,14 @@ namespace DevLocker.VersionControl.WiseGit
 					for (int i = 0; i < theirs.Count; ++i) {
 						var their = theirs[i];
 						their.path = TruncateGitRoot(their.path);
+
+						// Is path outside our Unity project?
+						if (string.IsNullOrEmpty(their.path)) {
+							theirs.RemoveAt(i);
+							--i;
+							continue;
+						}
+
 						theirs[i] = their;
 					}
 				}
@@ -396,7 +412,13 @@ namespace DevLocker.VersionControl.WiseGit
 		/// <param name="resultEntries">List of result statuses</param>
 		public static StatusOperationResult GetStatuses(string path, bool offline, List<GitStatusData> resultEntries, int timeout = ONLINE_COMMAND_TIMEOUT, IShellMonitor shellMonitor = null)
 		{
-			path = path.Replace('\\', '/');	// Used for locks filtering.
+			path = path.Replace('\\', '/'); // Used for locks filtering.
+
+			// If path is empty, assume the root of the project. Passing empty string results in "" surrounding nothing which breaks git commands. Use "." instead.
+			// We already use TruncateGitRoot() in case the unity root is not the git root.
+			if (string.IsNullOrEmpty(path)) {
+				path = ".";
+			}
 
 			ShellUtils.ShellResult result;
 			LocksJSONEntry locksJSONEntry = new LocksJSONEntry() { ours = new(), theirs = new() };
@@ -409,9 +431,11 @@ namespace DevLocker.VersionControl.WiseGit
 
 				// Skip errors checks - nothing to do about them.
 				if (!result.HasErrors) {
-					foreach (string changePath in result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries)) {
+					foreach (string changePath in result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(TruncateGitRoot)) {
+
+						// Paths outside the Unity projects will be truncated to empty strings.
 						if (!string.IsNullOrEmpty(changePath)) {
-							remoteChanges.Add(TruncateGitRoot(changePath));
+							remoteChanges.Add(changePath);
 						}
 					}
 				}
@@ -452,7 +476,10 @@ namespace DevLocker.VersionControl.WiseGit
 
 				locksJSONEntry = JsonUtility.FromJson<LocksJSONEntry>(result.Output);
 				locksJSONEntry.TruncateGitRootFromPaths();
-				locksJSONEntry.ExcludeOutsidePaths(path);
+
+				if (path != ".") {
+					locksJSONEntry.ExcludeOutsidePaths(path);
+				}
 			}
 
 			result = ExecuteCommand(path, $"status --porcelain -z \"{GitFormatPath(path)}\"", timeout, shellMonitor);
@@ -463,7 +490,7 @@ namespace DevLocker.VersionControl.WiseGit
 
 			// Empty result could also mean: file doesn't exist.
 			// Note: git-deleted files still have git status, so always check for status before files on disk.
-			if (string.IsNullOrWhiteSpace(result.Output)) {
+			if (string.IsNullOrWhiteSpace(result.Output) && path != ".") {
 				if (!File.Exists(path) && !Directory.Exists(path))
 					return StatusOperationResult.TargetPathNotFound;
 			}
@@ -2073,7 +2100,11 @@ namespace DevLocker.VersionControl.WiseGit
 					: currentSubmoduleRoot + line.Substring(3)
 					;
 
-				if (!string.IsNullOrWhiteSpace(pathFilter) && !statusData.Path.StartsWith(pathFilter))
+				// Paths outside the Unity projects will be truncated to empty strings.
+				if (string.IsNullOrEmpty(statusData.Path))
+					continue;
+
+				if (!string.IsNullOrWhiteSpace(pathFilter) && pathFilter != "." && !statusData.Path.StartsWith(pathFilter))
 					continue;
 
 				// 1st is staging/index, 2nd char is working tree/files. Prefer the working status always.
@@ -2111,6 +2142,8 @@ namespace DevLocker.VersionControl.WiseGit
 		/// <summary>
 		/// Sometimes git returns path relative to the root, not to the working folder. Mainly when using "--porcelain" parameter.
 		/// This method will truncate the path down to the Unity project location, if needed.
+		///
+		/// WARNING: if provided path is OUTSIDE of the Unity project, it will return empty string.
 		/// </summary>
 		private static string TruncateGitRoot(string unityPath)
 		{
@@ -2121,8 +2154,23 @@ namespace DevLocker.VersionControl.WiseGit
 				m_GitRootDifference = ProjectRootUnity.Replace(m_GitRootDifference, "").TrimStart('/');
 			}
 
-			if (m_GitRootDifference.Length > 0 && unityPath.StartsWith(m_GitRootDifference)) {
-				unityPath = unityPath.Substring(m_GitRootDifference.Length + 1);
+			// Example repository structure:
+			// ClientUnity/Assets/foo.png
+			// ClientUnity/Packages/...
+			// Server/API/...
+			// AnotherUnityProject/Assets/...
+			// AnotherUnityProject/Assets/...
+			//
+			// We're running the ClientUnity project. m_GitRootDifference is "ClientUnity" in this case.
+			// But changes may be present in the Server or AnotherUnityProject.
+			// If provided path is outside of our Unity project return empty string. The user should discard it.
+
+			if (m_GitRootDifference.Length > 0) {
+				if (unityPath.StartsWith(m_GitRootDifference)) {
+					unityPath = unityPath.Substring(m_GitRootDifference.Length + 1);
+				} else {
+					return "";
+				}
 			}
 
 			return unityPath;
@@ -2130,7 +2178,7 @@ namespace DevLocker.VersionControl.WiseGit
 
 		private static string GetWorkingPathFor(string usedUnityPath)
 		{
-			if (string.IsNullOrEmpty(usedUnityPath)) {
+			if (string.IsNullOrEmpty(usedUnityPath) || usedUnityPath == ".") {
 				return null;
 			}
 
