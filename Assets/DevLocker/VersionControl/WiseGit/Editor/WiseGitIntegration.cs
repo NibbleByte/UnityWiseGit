@@ -1572,7 +1572,7 @@ namespace DevLocker.VersionControl.WiseGit
 
 				// Remote directory not found.
 				// fatal: Not a valid object name origin/master:sadasda
-				if (result.Error.Contains("Not a valid object name"))
+				if (result.Error.Contains("Not a valid object name", StringComparison.OrdinalIgnoreCase))
 					return ListOperationResult.NotFound;
 
 				return (ListOperationResult) ParseCommonStatusError(result.Error);
