@@ -1850,6 +1850,11 @@ namespace DevLocker.VersionControl.WiseGit
 					return AssetDeleteResult.FailedDelete;
 				}
 
+				// Git will delete ONLY versioned files. Unversioned are left, which keeps the folder.
+				if (Directory.Exists(path)) {
+					Directory.Delete(path, recursive: true);
+				}
+
 				return AssetDeleteResult.DidDelete;
 			}
 		}
