@@ -1,7 +1,7 @@
 {
     "name": "devlocker.versioncontrol.wisegit",
     "displayName": "WiseGit",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "unity": "2022.3",
     "description": "Simple but powerful Git integration. Provides you with git context menus, overlay icons and takes care of moved or deleted files.",
 	"category": "VersionControl",
