@@ -1,5 +1,6 @@
 // MIT License Copyright(c) 2022 Filip Slavov, https://github.com/NibbleByte/UnityWiseGit
 
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -52,6 +53,9 @@ namespace DevLocker.VersionControl.WiseGit.Shell
 			public int ProcessId;
 
 			public bool HasErrors => !string.IsNullOrWhiteSpace(Error) || ErrorCode != 0;
+
+			public bool ErrorContains(string value) => Error?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false;
+			public bool OutputContains(string value) => Output?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false;
 		}
 
 		public const string USER_ABORTED_LOG = "User aborted the operation...";

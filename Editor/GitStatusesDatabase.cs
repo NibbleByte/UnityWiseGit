@@ -304,15 +304,15 @@ namespace DevLocker.VersionControl.WiseGit
 				if (result.HasErrors) {
 					// error: cannot lock ref '...': is at ... but expected ...
 					// This means another fetch was in progress when this one started. The fetch was done, but ours got error. Continue normally.
-					if (result.Error.Contains("error: cannot lock ref")) {
+					if (result.ErrorContains("error: cannot lock ref")) {
 						reporter.ResetErrorFlag();
 
 					} else {
-						LastError = WiseGitIntegration.ParseCommonStatusError(result.Error);
+						LastError = WiseGitIntegration.ParseCommonStatusError(result);
 					}
 				}
 
-				if (result.Error.Contains(ShellUtils.TIME_OUT_ERROR_TOKEN) && ShellUtils.IsProcessAlive(result.ProcessId)) {
+				if (result.ErrorContains(ShellUtils.TIME_OUT_ERROR_TOKEN) && ShellUtils.IsProcessAlive(result.ProcessId)) {
 					reporter?.AppendTraceLine("Fetching remote took too long. Skipping until it finishes downloading in the background.");
 
 					// Write process id in file to track when it finished downloading server changes.

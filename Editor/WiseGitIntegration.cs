@@ -446,7 +446,7 @@ namespace DevLocker.VersionControl.WiseGit
 				result = ShellUtils.ExecuteCommand(Git_Command, $"lfs locks --verify --json", timeout, shellMonitor);
 
 				if (result.HasErrors) {
-					return ParseCommonStatusError(result.Error);
+					return ParseCommonStatusError(result);
 				}
 
 
@@ -485,7 +485,7 @@ namespace DevLocker.VersionControl.WiseGit
 			result = ExecuteCommand(path, $"status --porcelain -z \"{GitFormatPath(path)}\"", timeout, shellMonitor);
 
 			if (result.HasErrors) {
-				return ParseCommonStatusError(result.Error);
+				return ParseCommonStatusError(result);
 			}
 
 			// Empty result could also mean: file doesn't exist.
@@ -513,7 +513,7 @@ namespace DevLocker.VersionControl.WiseGit
 				result = ShellUtils.ExecuteCommand(Git_Command, $"submodule foreach --recursive  {Git_Command} status --porcelain -z", timeout, shellMonitor);
 
 				if (result.HasErrors) {
-					return ParseCommonStatusError(result.Error);
+					return ParseCommonStatusError(result);
 				}
 
 				if (!string.IsNullOrWhiteSpace(result.Output)) {
@@ -726,50 +726,50 @@ namespace DevLocker.VersionControl.WiseGit
 			});
 		}
 
-		internal static StatusOperationResult ParseCommonStatusError(string error)
+		internal static StatusOperationResult ParseCommonStatusError(ShellUtils.ShellResult result)
 		{
 			// fatal: not a git repository (or any of the parent directories): .git
 			// This can be returned when project is not a valid git checkout. (Probably)
-			if (error.Contains("fatal: not a git repository"))
+			if (result.ErrorContains("fatal: not a git repository"))
 				return StatusOperationResult.NotWorkingCopy;
 
 			// warning: could not open directory '...': No such file or directory
 			// Folder for target file was not found.
 			// Happens when duplicating unversioned folder with unversioned files inside - requests for status by OnWillCreateAsset(), but files are not actually created yet.
-			if (error.Contains("No such file or directory"))
+			if (result.ErrorContains("No such file or directory"))
 				return StatusOperationResult.TargetPathNotFound;
 
 			// System.ComponentModel.Win32Exception (0x80004005): ApplicationName='...', CommandLine='...', Native error= The system cannot find the file specified.
 			// Could not find the command executable. The user hasn't installed their CLI (Command Line Interface) so we're missing an "git.exe" in the PATH environment.
-			if (error.Contains("0x80004005"))
+			if (result.ErrorContains("0x80004005"))
 				return StatusOperationResult.ExecutableNotFound;
 
 			// User needs to log in using normal git client and save their authentication. This or they have multiple accounts.
 			// fatal: User cancelled dialog.
 			// fatal: could not read Username for '...': No such file or directory
 			// Authentication failed
-			if (error.Contains("fatal: User cancelled dialog.") || error.Contains("fatal: could not read Username for"))
+			if (result.ErrorContains("fatal: User cancelled dialog.") || result.ErrorContains("fatal: could not read Username for"))
 				return StatusOperationResult.AuthenticationFailed;
 
 			// Unable to connect to repository indicating some network or server problems.
 			// fatal: unable to access '...': Could not resolve host: ...
-			if (error.Contains("fatal: unable to access") || error.Contains("No such device or address"))
+			if (result.ErrorContains("fatal: unable to access") || result.ErrorContains("No such device or address"))
 				return StatusOperationResult.UnableToConnectError;
 
 			// Git version is too old and doesn't support some features. Try updating git.
 			// error: unknown option `porcelain'
-			if (error.Contains("error: unknown option"))
+			if (result.ErrorContains("error: unknown option"))
 				return StatusOperationResult.OldUnsupportedGitVersion;
 
 			// Git lfs is not installed properly or using an old version?
 			// Error while retrieving locks: missing protocol: ""
 			// OR
 			// git: 'lfs' is not a git command. See 'git --help'.
-			if (error.Contains("missing protocol") || error.Contains("'lfs' is not a git command."))
+			if (result.ErrorContains("missing protocol") || result.ErrorContains("'lfs' is not a git command."))
 				return StatusOperationResult.BadLFSSupport;
 
 			// Operation took too long, shell utils time out kicked in.
-			if (error.Contains(ShellUtils.TIME_OUT_ERROR_TOKEN))
+			if (result.ErrorContains(ShellUtils.TIME_OUT_ERROR_TOKEN))
 				return StatusOperationResult.Timeout;
 
 			return StatusOperationResult.UnknownError;
@@ -794,7 +794,7 @@ namespace DevLocker.VersionControl.WiseGit
 
 			// Happens for nested directory paths of ignored one, only when using --directory.
 			// fatal: git ls-files: internal error - directory entry not superset of prefix
-			if (skipFilesInIgnoredDirectories && result.Error.Contains("internal error - directory entry not superset of prefix")) {
+			if (skipFilesInIgnoredDirectories && result.ErrorContains("internal error - directory entry not superset of prefix")) {
 				// Run without the flag and filter the results. May be slower depending on the results count.
 				var ignoredPaths = GetIgnoredPaths(path, false);
 				if (ignoredPaths.Length > 0) {
@@ -859,25 +859,25 @@ namespace DevLocker.VersionControl.WiseGit
 				// File is already locked by THIS or another working copy (can be the same user).
 				// This happens even if this working copy got the lock.
 				// NOTE: to check if lock is ours or not, we need to parse the user that owns it, which is too much hassle for now.
-				if (result.Error.Contains("failed: Lock exists"))
+				if (result.ErrorContains("failed: Lock exists"))
 					return LockOperationResult.LockAlreadyExists;
 
 				// cannot lock directory: ...
 				// Locking directories is not supported.
-				if (result.Error.Contains("cannot lock directory"))
+				if (result.ErrorContains("cannot lock directory"))
 					return LockOperationResult.DirectoryLockNotSupported;
 
 				// Sadly, lfs doesn't care if remote has changes for this file.
-				//if (result.Error.Contains("???"))
+				//if (result.ErrorContains("???"))
 				//	return LockOperationResult.RemoteHasChanges;
 
 				// Locking ... failed: exit status 255
 				// https://github.com/NibbleByte/UnityWiseGit/issues/1#issuecomment-2489845902
-				if (result.Error.Contains("failed: exit status 255") && shellMonitor != null) {
+				if (result.ErrorContains("failed: exit status 255") && shellMonitor != null) {
 					shellMonitor.AppendErrorLine("(hint - you may be having issues with your SSH setup. For example 'ssh-add' can't find 'ssh-askpass')");
 				}
 
-				return (LockOperationResult) ParseCommonStatusError(result.Error);
+				return (LockOperationResult) ParseCommonStatusError(result);
 			}
 
 			return LockOperationResult.Success;
@@ -947,30 +947,30 @@ namespace DevLocker.VersionControl.WiseGit
 
 				// ... is locked by ...
 				// File is locked by another user.
-				if (result.Error.Contains("is locked by"))
+				if (result.ErrorContains("is locked by"))
 					return LockOperationResult.LockAlreadyExists;
 
 				// Cannot unlock file with uncommitted changes
 				// Unlocking will make the file read-only which may be confusing for the users. Use force to bypass this.
-				if (result.Error.Contains("Cannot unlock file with uncommitted changes"))
+				if (result.ErrorContains("Cannot unlock file with uncommitted changes"))
 					return LockOperationResult.BlockedByUncommittedChanges;
 
 				// "You must have admin access to force delete a lock" on github LFS (may be server specific?).
 				// Example: github collabolators can't steal locks, only repo owners can.
-				if (result.Error.Contains("You must have admin access"))
+				if (result.ErrorContains("You must have admin access"))
 					return LockOperationResult.InsufficientPrivileges;
 
 				// CreateFile ...: The system cannot find the file specified.
 				// Unversioned file was locked, then moved. Unlocking the old location produces this error.
-				if (result.Error.Contains("The system cannot find the file specified"))
+				if (result.ErrorContains("The system cannot find the file specified"))
 					return LockOperationResult.TargetPathNotFound;
 
 				// Unable to determine path: cannot lock directory: ...
 				// Locking directories is not supported.
-				if (result.Error.Contains("cannot lock directory"))
+				if (result.ErrorContains("cannot lock directory"))
 					return LockOperationResult.DirectoryLockNotSupported;
 
-				return (LockOperationResult) ParseCommonStatusError(result.Error);
+				return (LockOperationResult) ParseCommonStatusError(result);
 			}
 
 			return LockOperationResult.Success;
@@ -1003,21 +1003,21 @@ namespace DevLocker.VersionControl.WiseGit
 
 				// error: cannot lock ref '...': is at ... but expected ...
 				// This means another fetch was in progress when this one started. The fetch was done, but ours got error. Continue normally.
-				if (result.Error.Contains("error: cannot lock ref"))
+				if (result.ErrorContains("error: cannot lock ref"))
 					return PullOperationResult.Success;
 
 				// fatal: '...' does not appear to be a git repository
 				// fatal: Could not read from remote repository.
 				// Remote repository not found..
-				if (result.Error.Contains("does not appear to be a git repository"))
+				if (result.ErrorContains("does not appear to be a git repository"))
 					return PullOperationResult.RemoteNotFound;
 
 				// fatal: couldn't find remote ref ...
 				// Remote branch not found.
-				if (result.Error.Contains("couldn't find remote ref"))
+				if (result.ErrorContains("couldn't find remote ref"))
 					return PullOperationResult.BranchNotFound;
 
-				return (PullOperationResult) ParseCommonStatusError(result.Error);
+				return (PullOperationResult) ParseCommonStatusError(result);
 			}
 
 			return PullOperationResult.Success;
@@ -1054,21 +1054,21 @@ namespace DevLocker.VersionControl.WiseGit
 			if (result.HasErrors) {
 				// error: Your local changes to the following files would be overwritten by merge:
 				// Please commit your changes or stash them before you merge.
-				if (result.Error.Contains("Your local changes to the following files would be overwritten by merge"))
+				if (result.ErrorContains("Your local changes to the following files would be overwritten by merge"))
 					return PullOperationResult.LocalChangesFound;
 
 				// merge: ... - not something we can merge
 				// Branch not found.
-				if (result.Error.Contains("not something we can merge"))
+				if (result.ErrorContains("not something we can merge"))
 					return PullOperationResult.BranchNotFound;
 
-				return (PullOperationResult)ParseCommonStatusError(result.Error);
+				return (PullOperationResult)ParseCommonStatusError(result);
 			}
 
 			// CONFLICT (content): Merge conflict in Assets/Readme.txt
 			// Automatic merge failed; fix conflicts and then commit the result.
 			// Conflicts happened.
-			if (result.Output.Contains("Automatic merge failed;"))
+			if (result.OutputContains("Automatic merge failed;"))
 				return PullOperationResult.SuccessWithConflicts;
 
 			return PullOperationResult.Success;
@@ -1114,12 +1114,12 @@ namespace DevLocker.VersionControl.WiseGit
 				// fatal: '...' does not appear to be a git repository
 				// fatal: Could not read from remote repository.
 				// Remote repository not found..
-				if (result.Error.Contains("does not appear to be a git repository"))
+				if (result.ErrorContains("does not appear to be a git repository"))
 					return PullOperationResult.RemoteNotFound;
 
 				// fatal: couldn't find remote ref ...
 				// Remote branch not found.
-				if (result.Error.Contains("couldn't find remote ref"))
+				if (result.ErrorContains("couldn't find remote ref"))
 					return PullOperationResult.BranchNotFound;
 
 				//
@@ -1128,22 +1128,22 @@ namespace DevLocker.VersionControl.WiseGit
 
 				// error: Your local changes to the following files would be overwritten by merge:
 				// Please commit your changes or stash them before you merge.
-				if (result.Error.Contains("Your local changes to the following files would be overwritten by merge"))
+				if (result.ErrorContains("Your local changes to the following files would be overwritten by merge"))
 					return PullOperationResult.LocalChangesFound;
 
 				// merge: ... - not something we can merge
 				// Branch not found.
-				if (result.Error.Contains("not something we can merge"))
+				if (result.ErrorContains("not something we can merge"))
 					return PullOperationResult.BranchNotFound;
 
 
-				return (PullOperationResult) ParseCommonStatusError(result.Error);
+				return (PullOperationResult) ParseCommonStatusError(result);
 			}
 
 			// CONFLICT (content): Merge conflict in Assets/Readme.txt
 			// Automatic merge failed; fix conflicts and then commit the result.
 			// Conflicts happened.
-			if (result.Output.Contains("Automatic merge failed;"))
+			if (result.OutputContains("Automatic merge failed;"))
 				return PullOperationResult.SuccessWithConflicts;
 
 			return PullOperationResult.Success;
@@ -1203,26 +1203,26 @@ namespace DevLocker.VersionControl.WiseGit
 			if (result.HasErrors) {
 
 				// no changes added to commit (use "git add" and/or "git commit -a")
-				if (result.ErrorCode == -1 && result.Output.Contains("no changes added to commit"))
+				if (result.ErrorCode == -1 && result.OutputContains("no changes added to commit"))
 					return PushOperationResult.NoChangesToCommit;
 
 				// Some files have conflicts. Clear them before trying to commit.
 				// error: Committing is not possible because you have unmerged files.
 				// fatal: Exiting because of an unresolved conflict.
-				if (result.Error.Contains("you have unmerged files") || result.Error.Contains("unresolved conflict"))
+				if (result.ErrorContains("you have unmerged files") || result.ErrorContains("unresolved conflict"))
 					return PushOperationResult.ConflictsError;
 
 				// Cannot do partial commits during merge. Do the special merge commit with staged changes first.
 				// fatal: cannot do a partial commit during a merge.
-				if (result.Error.Contains("cannot do a partial commit during a merge"))
+				if (result.ErrorContains("cannot do a partial commit during a merge"))
 					return PushOperationResult.NoPartialCommitsInMerge;
 
 				// Can't commit unversioned files directly. Add them before trying to commit. Recursive skips unversioned files.
 				// error: pathspec '...' did not match any file(s) known to git
-				if (result.Error.Contains("did not match any file(s) known to git"))
+				if (result.ErrorContains("did not match any file(s) known to git"))
 					return PushOperationResult.UnversionedError;
 
-				return (PushOperationResult) ParseCommonStatusError(result.Error);
+				return (PushOperationResult) ParseCommonStatusError(result);
 			}
 
 			return PushOperationResult.Success;
@@ -1280,22 +1280,22 @@ namespace DevLocker.VersionControl.WiseGit
 
 				// error: failed to push some refs to '...'
 				// Remote has changes. You need to pull first.
-				if (result.Error.Contains("failed to push some refs to"))
+				if (result.ErrorContains("failed to push some refs to"))
 					return PushOperationResult.RejectedByRemote;
 
 				// fatal: '...' does not appear to be a git repository
 				// fatal: Could not read from remote repository.
 				// Remote repository not found..
-				if (result.Error.Contains("does not appear to be a git repository"))
+				if (result.ErrorContains("does not appear to be a git repository"))
 					return PushOperationResult.RemoteNotFound;
 
 				// error: src refspec ... does not match any
 				// error: failed to push some refs to '...'
 				// Remote branch not found.
-				if (result.Error.Contains("does not match any"))
+				if (result.ErrorContains("does not match any"))
 					return PushOperationResult.BranchNotFound;
 
-				return (PushOperationResult) ParseCommonStatusError(result.Error);
+				return (PushOperationResult) ParseCommonStatusError(result);
 			}
 
 			return PushOperationResult.Success;
@@ -1331,7 +1331,7 @@ namespace DevLocker.VersionControl.WiseGit
 			if (result.HasErrors) {
 
 				// Operation took too long, shell utils time out kicked in.
-				if (result.Error.Contains(ShellUtils.TIME_OUT_ERROR_TOKEN))
+				if (result.ErrorContains(ShellUtils.TIME_OUT_ERROR_TOKEN))
 					return RevertOperationResult.Timeout;
 
 				return RevertOperationResult.UnknownError;
@@ -1343,11 +1343,11 @@ namespace DevLocker.VersionControl.WiseGit
 
 					//error: pathspec '...' did not match any file(s) known to git
 					// File is actually unversioned/untracked, which is valid case after reset of an added file. Nothing to do.
-					if (result.Error.Contains("did not match any file(s) known to git"))
+					if (result.ErrorContains("did not match any file(s) known to git"))
 						return RevertOperationResult.Success;
 
 					// Operation took too long, shell utils time out kicked in.
-					if (result.Error.Contains(ShellUtils.TIME_OUT_ERROR_TOKEN))
+					if (result.ErrorContains(ShellUtils.TIME_OUT_ERROR_TOKEN))
 						return RevertOperationResult.Timeout;
 
 					return RevertOperationResult.UnknownError;
@@ -1572,10 +1572,10 @@ namespace DevLocker.VersionControl.WiseGit
 
 				// Remote directory not found.
 				// fatal: Not a valid object name origin/master:sadasda
-				if (result.Error.Contains("Not a valid object name"))
+				if (result.ErrorContains("Not a valid object name"))
 					return ListOperationResult.NotFound;
 
-				return (ListOperationResult) ParseCommonStatusError(result.Error);
+				return (ListOperationResult) ParseCommonStatusError(result);
 			}
 
 			var output = result.Output.Replace("\r", "");
@@ -1668,14 +1668,14 @@ namespace DevLocker.VersionControl.WiseGit
 				var result = ShellUtils.ExecuteCommand(Git_Command, $"remote show {GetTrackedRemote()}", COMMAND_TIMEOUT, op);
 
 				if (result.HasErrors)
-					return ParseCommonStatusError(result.Error);
+					return ParseCommonStatusError(result);
 
 				// lfs may also have issues, check it as well.
 				// https://github.com/NibbleByte/UnityWiseGit/issues/1#issuecomment-2489845902
 				result = ShellUtils.ExecuteCommand(Git_Command, $"lfs locks", COMMAND_TIMEOUT, op);
 
 				if (result.HasErrors)
-					return ParseCommonStatusError(result.Error);
+					return ParseCommonStatusError(result);
 
 				return StatusOperationResult.Success;
 			});
@@ -1821,7 +1821,7 @@ namespace DevLocker.VersionControl.WiseGit
 					// fatal: pathspec '...' did not match any files
 					// Unversioned file got deleted or is already marked for deletion (staged). Let someone else show the error if any.
 					// Or deleted folder was empty.
-					if (result.Error.Contains("did not match any files")) {
+					if (result.ErrorContains("did not match any files")) {
 						reporter.ClearLogsAndErrorFlag();
 
 						// If it was an empty folder, make sure we delete the meta, or it may confuse the git clients.
@@ -1842,7 +1842,7 @@ namespace DevLocker.VersionControl.WiseGit
 
 					// fatal: pathspec '...' did not match any files
 					// Unversioned file got deleted or is already marked for deletion (staged). Let someone else show the error if any.
-					if (result.Error.Contains("did not match any files")) {
+					if (result.ErrorContains("did not match any files")) {
 						reporter.ClearLogsAndErrorFlag();
 						return AssetDeleteResult.DidNotDelete;
 					}
@@ -1981,7 +1981,7 @@ namespace DevLocker.VersionControl.WiseGit
 
 					// fatal: source directory is empty, source=..., destination=...
 					// Empty "versioned" folders (i.e. it's meta file) returns this error, which is fine - move the folder normally and move the meta with git.
-					if (result.Error.Contains("fatal: source directory is empty")) {
+					if (result.ErrorContains("fatal: source directory is empty")) {
 						try {
 							Directory.Move(oldPath, newPath);
 							reporter.ResetErrorFlag();	// Recover and continue doing the meta file.
@@ -2224,7 +2224,7 @@ namespace DevLocker.VersionControl.WiseGit
 				//
 				// For example - sometimes when rebaking scene. This deletes and adds the baked maps, causing a lot of database refreshes in another thread.
 
-				if (!string.IsNullOrWhiteSpace(result.Error) && result.Error.Contains(".git/index.lock") && result.Error.Contains("File exists.")) {
+				if (!string.IsNullOrWhiteSpace(result.Error) && result.ErrorContains(".git/index.lock") && result.ErrorContains("File exists.")) {
 					if (m_IsMainThread) {
 
 						// IMPORTANT: If you keep seeing this progress bar and it goes 100% every time, remove this file ".git/index.lock"
