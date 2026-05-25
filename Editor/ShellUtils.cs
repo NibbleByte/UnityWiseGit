@@ -394,21 +394,53 @@ namespace DevLocker.VersionControl.WiseGit.Shell
 				$"{command} {args}"
 				;
 			File.WriteAllText(scriptPath, scriptContents);
-			Process.Start("chmod", $"+x \"{scriptPath}\"");	 // Must be executable.
+
+			var chmodProcess = Process.Start("chmod", $"+x \"{scriptPath}\"");	 // Must be executable.
+			chmodProcess.WaitForExit();
+
+
 #if UNITY_EDITOR_OSX
+			bool terminalClosed = false;
 			Process process = Process.Start("/System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal", $"\"{scriptPath}\"");
 #else
-			// Tested on Ubuntu 24.04
-			Process process = Process.Start("gnome-terminal", $"--window --execute \"{scriptPath}\"");
+			bool terminalClosed = true;
+
+			(string, string)[] terminals = {
+				// Preferred terminal https://gitlab.freedesktop.org/terminal-wg/specifications/-/merge_requests/3
+				("xdg-terminal-exec", $"--hold -- sh \"{scriptPath}\""),
+				("gnome-terminal", $"--window --wait -- sh \"{scriptPath}\""),
+				("konsole", $"-e \"sh {scriptPath}\""),
+			};
+
+			bool terminalFound = false;
+			foreach (var (terminal, terminalArgs) in terminals) {
+				try {
+					Process process = Process.Start(terminal, terminalArgs);
+					if (process != null) {
+						terminalFound = true;
+						process.WaitForExit();
+						break;
+					}
+				} catch (System.ComponentModel.Win32Exception) {
+					// Not found
+				}
+			}
+			if (!terminalFound) {
+				throw new Exception("Terminal not found. Please install xdg-terminal-exec, gnome-terminal, konsole or a supported terminal.");
+			}
 #endif
 
 			// Waiting for terminal to close doesn't work - script finishes, but terminal remains open, which may be confusing for the user.
-			Thread.Sleep(1000);
+			if (!terminalClosed)
+				Thread.Sleep(1000);
 
 			File.Delete(scriptPath);
 
-#else
+			// Interact with the user since we don't know when the terminal will close.
+			if (!terminalClosed)
+				UnityEditor.EditorUtility.DisplayDialog("Waiting for Terminal", "A terminal window was open requesting your input.\nWhen you are done with it, press \"Ready\".", "Ready");
 
+#else
 			ProcessStartInfo processStartInfo = new ProcessStartInfo(command, args);
 			processStartInfo.WindowStyle = ProcessWindowStyle.Normal;
 			processStartInfo.CreateNoWindow = false;
