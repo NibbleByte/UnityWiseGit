@@ -423,7 +423,7 @@ namespace DevLocker.VersionControl.WiseGit
 			ShellUtils.ShellResult result;
 			LocksJSONEntry locksJSONEntry = new LocksJSONEntry() { ours = new(), theirs = new() };
 
-			var remoteChanges = new HashSet<string>();
+			var remoteChanges = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 			if (!offline) {
 				// Check what changed after our branch diverged from the remote one, only files.
 				// This works only if remote branch was fetched (downloaded) locally.
@@ -554,7 +554,7 @@ namespace DevLocker.VersionControl.WiseGit
 			for (int i = 0; i < resultEntries.Count; ++i) {
 				GitStatusData statusData = resultEntries[i];
 
-				if (remoteChanges.Contains(statusData.Path, StringComparer.OrdinalIgnoreCase)) {
+				if (remoteChanges.Contains(statusData.Path)) {
 					statusData.RemoteStatus = VCRemoteFileStatus.Modified;
 					remoteChanges.Remove(statusData.Path);
 				}
@@ -564,6 +564,7 @@ namespace DevLocker.VersionControl.WiseGit
 				resultEntries[i] = statusData;
 			}
 
+			// RemoteChanges paths are limited to the given path.
 			foreach(string remoteChange in remoteChanges) {
 				if (IsHiddenPath(remoteChange))
 					continue;
@@ -582,7 +583,7 @@ namespace DevLocker.VersionControl.WiseGit
 
 
 			foreach(var lockJSONEntry in locksJSONEntry.ours) {
-				if (IsHiddenPath(lockJSONEntry.path) || !lockJSONEntry.path.StartsWith(path))
+				if (IsHiddenPath(lockJSONEntry.path) || !ArePathsNested(path, lockJSONEntry.path))
 					continue;
 
 				var statusData = new GitStatusData() {
@@ -596,7 +597,7 @@ namespace DevLocker.VersionControl.WiseGit
 			}
 
 			foreach(var lockJSONEntry in locksJSONEntry.theirs) {
-				if (IsHiddenPath(lockJSONEntry.path) || !lockJSONEntry.path.StartsWith(path))
+				if (IsHiddenPath(lockJSONEntry.path) || !ArePathsNested(path, lockJSONEntry.path))
 					continue;
 
 				var statusData = new GitStatusData() {
@@ -2291,6 +2292,9 @@ namespace DevLocker.VersionControl.WiseGit
 		// Assets/ArtPrototyping/foo.png
 		internal static bool ArePathsNested(string parentPath, string childPath)
 		{
+			if (string.IsNullOrEmpty(parentPath) || parentPath == ".")
+				return true;
+
 			if (parentPath.EndsWith('/')) {
 				parentPath = parentPath.TrimEnd('/');
 			}
